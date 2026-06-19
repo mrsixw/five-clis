@@ -25,39 +25,31 @@ make format && make lint && make test
 
 ## 3. Rename the package
 
-Replace every occurrence of `fiveclis` (Python package name) and `five-clis`
-(CLI binary name) with your own names. A safe search order:
+Run the interactive rename script — it handles all find/replace, renames the source
+directory, and removes stale build artefacts in one pass:
 
-| File | What to change |
-| ---- | -------------- |
-| `pyproject.toml` | `name`, `description`, `[project.scripts]` entry point |
-| `src/fiveclis/` | Rename the directory to `src/<myapp>/` |
-| All `*.py` imports | `from fiveclis.` → `from <myapp>.` |
-| `Makefile` | `_FIVE_CLIS_COMPLETE` env var prefix, `five-clis` binary references |
-| `.github/workflows/ci.yml` | `_FIVE_CLIS_COMPLETE` env var prefix, binary name in verify steps |
-| `install.sh` | Binary name and paths |
-| `utils/generate_man_page.py` | First argument to `write_man_pages` |
-| `src/<myapp>/cli.py` | `_ENVVAR_PREFIX`, `complete_var`, `prog_name` |
-| `src/<myapp>/updater.py` | `_UPDATE_CHECK_REPO` (see step 4) |
-
-After renaming, run `make test` again to confirm nothing broke.
-
-## 4. Update repo references
-
-In `src/<myapp>/updater.py`, set `_UPDATE_CHECK_REPO` to your GitHub repo so the
-auto-update checker points at your releases:
-
-```python
-_UPDATE_CHECK_REPO = "you/myapp"
+```bash
+uv run python utils/rename.py
 ```
 
-## 5. Replace the demo business logic
+You'll be prompted for three values:
 
-`src/<myapp>/cli.py` contains a `greet` demo command. Replace the section marked
+| Prompt | Example | What it sets |
+| ------ | ------- | ------------ |
+| Python package name | `myapp` | `src/fiveclis/` → `src/myapp/`, imports |
+| CLI binary name | `my-app` | Entry point, Makefile, CI, completions |
+| GitHub repo | `you/myapp` | `install.sh`, `updater.py`, CI badge |
+
+If you prefer to rename manually, see the full file-by-file reference table in the
+[five-clis README](https://github.com/mrsixw/five-clis#using-this-template).
+
+## 4. Replace the demo business logic
+
+`src/<pkg>/cli.py` contains a `greet` demo command. Replace the section marked
 `# ── Business logic (replace this section) ──` with your own logic. Keep the
 surrounding infrastructure (themes, config, caching, update check) as-is.
 
-## 6. Add the `GH_TOKEN` secret
+## 5. Add the `GH_TOKEN` secret
 
 The release CI job creates GitHub releases and pushes version tags. It needs a
 Personal Access Token (PAT) with write access — the auto-provided `GITHUB_TOKEN`
@@ -83,7 +75,7 @@ doesn't have enough scope for this step.
 Without this secret the `release` CI job will fail with:
 `Error: Input required and not supplied: token`
 
-## 7. Validate locally
+## 6. Validate locally
 
 ```bash
 make format && make lint && make test
@@ -91,7 +83,7 @@ make format && make lint && make test
 
 All three must exit clean before you push.
 
-## 8. Push and watch CI
+## 7. Push and watch CI
 
 ```bash
 git add -A
