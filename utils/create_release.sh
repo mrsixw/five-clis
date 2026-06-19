@@ -4,7 +4,7 @@ set -euo pipefail
 version="$1"
 tag="v${version}"
 
-gh release create "${tag}" ./five-clis \
+gh release create "${tag}" ./dist/five-clis \
   man1/five-clis.1.gz \
   completions/five-clis.bash \
   completions/_five-clis \

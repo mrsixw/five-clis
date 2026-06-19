@@ -2,8 +2,11 @@ import pytest
 
 from fiveclis.config import (
     _DEFAULT_CONFIG_CONTENT,
+    _extract_option_blocks,
+    _key_present_in_file,
     load_config,
     show_config,
+    update_config,
     write_default_config,
 )
 
@@ -56,3 +59,70 @@ def test_show_config_with_values():
     output = show_config({"theme": "rainbow", "cache": True})
     assert "theme" in output
     assert "rainbow" in output
+
+
+def test_extract_option_blocks_returns_all_keys():
+    blocks = _extract_option_blocks(_DEFAULT_CONFIG_CONTENT)
+    keys = [k for k, _ in blocks]
+    assert "theme" in keys
+    assert "cache" in keys
+    assert "seasonal-colours" in keys
+    assert "no-update-check" in keys
+
+
+def test_extract_option_blocks_block_includes_comment():
+    blocks = dict(_extract_option_blocks(_DEFAULT_CONFIG_CONTENT))
+    assert "# theme =" in blocks["theme"]
+    assert "Equivalent to:" in blocks["theme"]
+
+
+def test_key_present_in_file_active():
+    assert _key_present_in_file("theme", 'theme = "dark"\n')
+
+
+def test_key_present_in_file_commented():
+    assert _key_present_in_file("theme", '# theme = "default"\n')
+
+
+def test_key_present_in_file_absent():
+    assert not _key_present_in_file("theme", "cache = true\n")
+
+
+def test_update_config_no_file(monkeypatch, tmp_path):
+    from fiveclis import config as cfg_mod
+
+    missing = tmp_path / "missing.toml"
+    monkeypatch.setattr(cfg_mod, "get_config_paths", lambda: [missing])
+    result = update_config()
+    assert result is False
+
+
+def test_update_config_already_up_to_date(monkeypatch, tmp_path):
+    from fiveclis import config as cfg_mod
+
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text(_DEFAULT_CONFIG_CONTENT)
+    monkeypatch.setattr(cfg_mod, "get_config_paths", lambda: [cfg_file])
+    result = update_config()
+    assert result is True
+    # No backup should be written
+    assert not list(tmp_path.glob("*.bak.*"))
+
+
+def test_update_config_adds_missing_keys(monkeypatch, tmp_path):
+    from fiveclis import config as cfg_mod
+
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text("# minimal config\n# theme = default\n")
+    monkeypatch.setattr(cfg_mod, "get_config_paths", lambda: [cfg_file])
+    result = update_config()
+    assert result is True
+    updated = cfg_file.read_text()
+    # backup written
+    assert list(tmp_path.glob("config.toml.bak.*"))
+    # missing keys appended
+    assert "cache" in updated
+    assert "seasonal-colours" in updated
+    assert "no-update-check" in updated
+    # existing key not duplicated
+    assert updated.count("# theme =") == 1

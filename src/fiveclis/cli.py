@@ -10,7 +10,7 @@ import sys
 
 import click
 
-from .config import load_config, show_config, write_default_config
+from .config import load_config, show_config, update_config, write_default_config
 from .logger import configure as configure_logging
 from .ui import APP_ITEMS, THEME_NAMES, apply_seasonal_colour, get_theme
 from .updater import check_for_update
@@ -51,6 +51,13 @@ _ENVVAR_PREFIX = "FIVE_CLIS"
     is_flag=True,
     default=False,
     help="Write a default config file and exit.",
+)
+@click.option(
+    "--update-config",
+    "do_update_config",
+    is_flag=True,
+    default=False,
+    help="Merge missing keys from the template into your config file (with backup).",
 )
 # ── Display ─────────────────────────────────────────────────────────────────
 @click.option(
@@ -113,6 +120,7 @@ def main(
     config_path,
     do_show_config,
     do_init_config,
+    do_update_config,
     theme,
     seasonal_colours,
     seasonal_calendar,
@@ -156,6 +164,10 @@ def main(
         path = write_default_config()
         click.echo(f"✅ Default config written to: {path}")
         sys.exit(0)
+
+    if do_update_config:
+        success = update_config(config_path)
+        sys.exit(0 if success else 1)
 
     if do_show_config:
         click.echo(show_config(cfg, config_path))
