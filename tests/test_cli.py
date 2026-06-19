@@ -103,3 +103,23 @@ def test_invalid_config_exits_with_error(tmp_path):
     bad_cfg.write_text("not = [valid toml")
     result = _invoke("--config", str(bad_cfg))
     assert result.exit_code == 1
+
+
+def test_update_config_no_config_exits_1(tmp_path, monkeypatch):
+    from fiveclis import config as cfg_mod
+
+    missing = tmp_path / "missing.toml"
+    monkeypatch.setattr(cfg_mod, "get_config_paths", lambda: [missing])
+    result = _invoke("--update-config")
+    assert result.exit_code == 1
+
+
+def test_update_config_up_to_date_exits_0(tmp_path, monkeypatch):
+    from fiveclis import config as cfg_mod
+    from fiveclis.config import _DEFAULT_CONFIG_CONTENT
+
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text(_DEFAULT_CONFIG_CONTENT)
+    monkeypatch.setattr(cfg_mod, "get_config_paths", lambda: [cfg_file])
+    result = _invoke("--update-config")
+    assert result.exit_code == 0
