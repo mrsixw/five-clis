@@ -41,13 +41,17 @@ eval "$(five-clis --completion bash)"
 
 ## Using this template
 
+See the **[Getting Started guide](docs/manual/getting-started.md)** for the full
+walkthrough. In brief:
+
 1. Click **Use this template** on GitHub
-2. Clone your new repo
+2. Clone your new repo and run `uv sync --extra dev`
 3. Replace occurrences of `fiveclis` / `five-clis` with your app name
 4. Replace the `greet` business logic in `src/fiveclis/cli.py` with your own
 5. Update `updater.py`: set `_UPDATE_CHECK_REPO` to your repo
 6. Update `pyproject.toml`: set `name`, `description`, `scripts` entry point
-7. Run `make test` to verify everything works
+7. Add a `GH_TOKEN` secret to your repo (required for the release CI job)
+8. Run `make test` to verify everything works
 
 ## Development
 
@@ -58,6 +62,7 @@ make format && make lint && make test
 
 ## Documentation
 
+- [Getting started](docs/manual/getting-started.md)
 - [Options reference](docs/manual/options.md)
 - [Usage guide](docs/manual/usage.md)
 - [Troubleshooting](docs/manual/troubleshooting.md)
