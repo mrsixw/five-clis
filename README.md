@@ -46,12 +46,10 @@ walkthrough. In brief:
 
 1. Click **Use this template** on GitHub
 2. Clone your new repo and run `uv sync --extra dev`
-3. Replace occurrences of `fiveclis` / `five-clis` with your app name
-4. Replace the `greet` business logic in `src/fiveclis/cli.py` with your own
-5. Update `updater.py`: set `_UPDATE_CHECK_REPO` to your repo
-6. Update `pyproject.toml`: set `name`, `description`, `scripts` entry point
-7. Add a `GH_TOKEN` secret to your repo (required for the release CI job)
-8. Run `make test` to verify everything works
+3. Run `uv run python utils/rename.py` to rename the package in one pass
+4. Replace the `greet` business logic in `src/<pkg>/cli.py` with your own
+5. Add a `GH_TOKEN` secret to your repo (required for the release CI job)
+6. Run `make format && make lint && make test` to verify everything works
 
 ## Development
 
