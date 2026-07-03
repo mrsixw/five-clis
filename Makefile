@@ -1,7 +1,11 @@
 .ONESHELL:
 SHELL = /bin/bash
 
-.PHONY: build release test lint docs-lint format man completions
+PREFIX ?= /usr/local
+BINDIR ?= $(PREFIX)/bin
+DESTDIR ?=
+
+.PHONY: build release test lint docs-lint format man completions install uninstall
 
 .venv:
 	uv venv .venv
@@ -9,7 +13,15 @@ SHELL = /bin/bash
 
 build: .venv
 	uv sync --extra build
-	uv run shiv -c five-clis -o five-clis --python '/usr/bin/env python3' --preamble utils/preamble.py .
+	mkdir -p dist
+	uv run shiv -c five-clis -o dist/five-clis --python '/usr/bin/env python3' --preamble utils/preamble.py .
+
+install: build
+	install -d "$(DESTDIR)$(BINDIR)"
+	install -m 755 dist/five-clis "$(DESTDIR)$(BINDIR)/five-clis"
+
+uninstall:
+	rm -f "$(DESTDIR)$(BINDIR)/five-clis"
 
 release: build
 
