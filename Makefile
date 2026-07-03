@@ -13,12 +13,11 @@ DESTDIR ?=
 
 build: .venv
 	uv sync --extra build
-	mkdir -p dist
-	uv run shiv -c five-clis -o dist/five-clis --python '/usr/bin/env python3' --preamble utils/preamble.py .
+	uv run shiv -c five-clis -o five-clis --python '/usr/bin/env python3' --preamble utils/preamble.py .
 
 install: build
 	install -d "$(DESTDIR)$(BINDIR)"
-	install -m 755 dist/five-clis "$(DESTDIR)$(BINDIR)/five-clis"
+	install -m 755 five-clis "$(DESTDIR)$(BINDIR)/five-clis"
 
 uninstall:
 	rm -f "$(DESTDIR)$(BINDIR)/five-clis"
