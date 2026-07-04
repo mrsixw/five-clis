@@ -8,18 +8,20 @@ from importlib.metadata import version as pkg_version
 
 import requests
 
+from .cache import atomic_write_text
 from .logger import logger
 from .xdg import get_cache_dir
 
 _UPDATE_CHECK_REPO = "mrsixw/five-clis"
 _PACKAGE_NAME = "fiveclis"
 
-_CACHE_DIR = get_cache_dir()
+_CACHE_FILENAME = "latest_version.json"
 _CACHE_TTL_SECONDS = 86400  # 24 hours
 
 
-def _read_version_cache():
-    cache_file = _CACHE_DIR / "latest_version.json"
+def _read_version_cache() -> dict | None:
+    """Return the whole cached update-check record if fresh, else None."""
+    cache_file = get_cache_dir() / _CACHE_FILENAME
     try:
         if not cache_file.exists():
             return None
@@ -28,46 +30,31 @@ def _read_version_cache():
         age = (datetime.now(timezone.utc) - cached_at).total_seconds()
         if age > _CACHE_TTL_SECONDS:
             return None
-        return data.get("latest_version")
+        return data
     except (OSError, json.JSONDecodeError, KeyError, ValueError, TypeError) as exc:
         logger.debug("version_cache_read_error error=%r", str(exc))
         return None
 
 
-def _read_cached_release_body():
-    cache_file = _CACHE_DIR / "latest_version.json"
-    try:
-        if not cache_file.exists():
-            return None
-        data = json.loads(cache_file.read_text())
-        cached_at = datetime.fromisoformat(data["checked_at"])
-        age = (datetime.now(timezone.utc) - cached_at).total_seconds()
-        if age > _CACHE_TTL_SECONDS:
-            return None
-        return data.get("release_body")
-    except (OSError, json.JSONDecodeError, KeyError, ValueError, TypeError):
-        return None
-
-
 def _write_version_cache(latest_version, release_body=None):
     try:
-        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        cache_file = _CACHE_DIR / "latest_version.json"
+        cache_dir = get_cache_dir()
+        cache_dir.mkdir(parents=True, exist_ok=True)
         payload = {
             "latest_version": latest_version,
             "checked_at": datetime.now(timezone.utc).isoformat(),
         }
         if release_body is not None:
             payload["release_body"] = release_body
-        cache_file.write_text(json.dumps(payload))
+        atomic_write_text(cache_dir / _CACHE_FILENAME, json.dumps(payload))
     except OSError as exc:
         logger.debug("version_cache_write_error error=%r", str(exc))
 
 
 def get_latest_version():
     cached = _read_version_cache()
-    if cached:
-        return cached
+    if cached and cached.get("latest_version"):
+        return cached["latest_version"]
     try:
         token = os.environ.get("GITHUB_TOKEN", "")
         headers = {"Accept": "application/vnd.github.v3+json"}
@@ -114,6 +101,14 @@ def _parse_version_tuple(version_str):
         return ()
 
 
+def _is_newer(latest: str, current: str) -> bool:
+    """Compare versions with zero-padding so ``0.2.0`` is not newer than ``0.2``."""
+    lt = _parse_version_tuple(latest)
+    ct = _parse_version_tuple(current)
+    width = max(len(lt), len(ct))
+    return lt + (0,) * (width - len(lt)) > ct + (0,) * (width - len(ct))
+
+
 def get_release_summary(body: str, max_chars: int = 200) -> str:
     """Extract a short human-readable summary from a GitHub release body."""
     if not body:
@@ -146,14 +141,15 @@ def check_for_update(show_summary: bool = False):
         latest = get_latest_version()
         if not latest:
             return None
-        if _parse_version_tuple(latest) > _parse_version_tuple(current):
+        if _is_newer(latest, current):
             msg = (
                 f"🍟 A fresh order is ready! "
                 f"v{current} → v{latest} "
                 f"— update at https://github.com/{_UPDATE_CHECK_REPO}/releases/latest"
             )
             if show_summary:
-                body = _read_cached_release_body()
+                cached = _read_version_cache()
+                body = cached.get("release_body") if cached else None
                 if body:
                     summary = get_release_summary(body)
                     if summary:

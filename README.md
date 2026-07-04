@@ -10,9 +10,9 @@ Click **Use this template** to scaffold a new project with everything wired up a
 
 | Essential | Description |
 | --------- | ----------- |
-| **Click** | Fully-wired entrypoint with `--version`, `--help`, `--completion` |
+| **Click** | Fully-wired command group with `--version`, `--help`, and a shared settings object |
 | **Shell completions** | bash, zsh, fish — generated and validated in CI |
-| **Config file** | TOML config with XDG paths, `--init-config`, `--show-config` |
+| **Config file** | TOML config with XDG paths, `config init`, `config show` |
 | **Themes** | `default`, `dark`, `light`, `mono`, `rainbow` — plus the full seasonal colour system |
 | **Seasonal colours** | Date-driven ANSI palettes: western, jewish, islamic, hindu, sikh, east-asian |
 | **Caching** | Generic TTL disk cache with atomic writes |
@@ -62,10 +62,10 @@ make uninstall PREFIX=$HOME/.local
 ```bash
 five-clis --help
 five-clis --theme rainbow
-five-clis --name Alice
-five-clis --init-config
-five-clis --show-config
-eval "$(five-clis --completion bash)"
+five-clis greet --name Alice
+five-clis config init
+five-clis config show
+eval "$(five-clis completion bash)"
 ```
 
 ## Using this template

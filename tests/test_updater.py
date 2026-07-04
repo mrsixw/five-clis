@@ -18,6 +18,17 @@ def test_parse_version_tuple_empty():
     assert upd._parse_version_tuple("") == ()
 
 
+def test_is_newer_basic():
+    assert upd._is_newer("2.0.0", "1.0.0")
+    assert not upd._is_newer("1.0.0", "2.0.0")
+
+
+def test_is_newer_pads_missing_segments():
+    assert not upd._is_newer("0.2.0", "0.2")
+    assert not upd._is_newer("0.2", "0.2.0")
+    assert upd._is_newer("0.2.1", "0.2")
+
+
 def test_get_release_summary_bullets():
     body = "## What's new\n- Fix A\n- Fix B\n- Fix C\n- Fix D"
     summary = upd.get_release_summary(body)
@@ -42,7 +53,7 @@ def test_get_release_summary_empty():
 
 
 def test_get_latest_version_from_cache(tmp_path, monkeypatch):
-    monkeypatch.setattr(upd, "_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(upd, "get_cache_dir", lambda: tmp_path)
     cache_file = tmp_path / "latest_version.json"
     cache_file.write_text(
         json.dumps(
@@ -56,7 +67,7 @@ def test_get_latest_version_from_cache(tmp_path, monkeypatch):
 
 
 def test_get_latest_version_expired_cache_fetches_api(tmp_path, monkeypatch):
-    monkeypatch.setattr(upd, "_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(upd, "get_cache_dir", lambda: tmp_path)
     old = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
     cache_file = tmp_path / "latest_version.json"
     cache_file.write_text(json.dumps({"latest_version": "0.0.1", "checked_at": old}))

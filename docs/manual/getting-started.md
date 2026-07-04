@@ -45,9 +45,11 @@ If you prefer to rename manually, see the full file-by-file reference table in t
 
 ## 4. Replace the demo business logic
 
-`src/<pkg>/cli.py` contains a `greet` demo command. Replace the section marked
-`# ── Business logic (replace this section) ──` with your own logic. Keep the
-surrounding infrastructure (themes, config, caching, update check) as-is.
+`src/<pkg>/cli.py` contains a `greet` demo subcommand. Replace it with your own
+commands: add `@main.command()` functions that take `@click.pass_obj` to receive
+the shared `Settings` object (resolved theme, colours, cache options, config) —
+no need to thread individual flags through each function. Keep the surrounding
+infrastructure (themes, config, caching, update check) as-is.
 
 ## 5. Add the `GH_TOKEN` secret
 

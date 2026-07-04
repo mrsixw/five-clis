@@ -95,6 +95,19 @@ def test_apply_seasonal_colour_january(monkeypatch):
     assert SEASONAL_PALETTES["purple"] in result
 
 
+def test_january_does_not_shadow_other_calendars(monkeypatch):
+    # Lunar New Year 2031 falls on 23 January; the east-asian calendar must
+    # see it rather than being overridden by the western New Year purple.
+    fixed = datetime.date(2031, 1, 23)
+    monkeypatch.setattr(
+        "fiveclis.ui.datetime.date",
+        type("MockDate", (), {"today": staticmethod(lambda: fixed)}),
+    )
+    result = apply_seasonal_colour("hello", 0, calendar="east-asian")
+    assert SEASONAL_PALETTES["lny"] in result
+    assert SEASONAL_PALETTES["purple"] not in result
+
+
 def test_apply_seasonal_colour_june_cycles(monkeypatch):
     fixed = datetime.date(2026, 6, 15)
     monkeypatch.setattr(

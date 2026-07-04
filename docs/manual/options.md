@@ -1,5 +1,33 @@
 # Options Reference
 
+`five-clis` is a command group. The options below are **global**: they go
+before the subcommand (`five-clis --theme rainbow greet`), are resolved once
+against the config file, and are shared with every subcommand through a single
+settings object — so new commands never need their own copies of these flags.
+
+## Commands
+
+### `greet [--name NAME]`
+
+The demo business command (also the default when no subcommand is given).
+Replace it with your own logic.
+
+### `config show`
+
+Print the resolved configuration.
+
+### `config init`
+
+Write a default config file to `~/.config/fiveclis/config.toml`.
+
+### `completion [bash|zsh|fish]`
+
+Print the shell completion script. Eval in your shell config:
+
+```bash
+eval "$(five-clis completion bash)"
+```
+
 ## Display options
 
 ### `--theme`
@@ -44,14 +72,7 @@ Disable all ANSI colour output. Also honoured via `FIVE_CLIS_NO_COLOUR=1`.
 ### `--config PATH`
 
 Path to a TOML config file. Overrides the XDG default search paths.
-
-### `--show-config`
-
-Print the resolved config and exit.
-
-### `--init-config`
-
-Write a default config file to `~/.config/fiveclis/config.toml` and exit.
+It is an error if the file does not exist.
 
 ## Caching
 
@@ -66,16 +87,6 @@ Config key: `cache = false`
 How long to cache results. Accepts seconds (`300`), or suffixed strings (`5m`, `2h`). Default: 300s.
 
 Config key: `cache-ttl = "300"`
-
-## Shell completions
-
-### `--completion [bash|zsh|fish]`
-
-Print the shell completion script and exit. Eval in your shell config:
-
-```bash
-eval "$(five-clis --completion bash)"
-```
 
 ## Other
 

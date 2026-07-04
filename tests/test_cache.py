@@ -42,7 +42,7 @@ def test_parse_ttl_bool_raises():
 
 
 def test_write_and_read_cache(tmp_path, monkeypatch):
-    monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(cache_mod, "get_cache_dir", lambda: tmp_path)
     payload = {"answer": 42, "items": ["a", "b"]}
     cache_mod.write_cache("test_key", payload)
     result = cache_mod.read_cache("test_key", ttl=3600)
@@ -50,12 +50,12 @@ def test_write_and_read_cache(tmp_path, monkeypatch):
 
 
 def test_read_cache_miss_no_file(tmp_path, monkeypatch):
-    monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(cache_mod, "get_cache_dir", lambda: tmp_path)
     assert cache_mod.read_cache("missing_key", ttl=300) is None
 
 
 def test_read_cache_expired(tmp_path, monkeypatch):
-    monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(cache_mod, "get_cache_dir", lambda: tmp_path)
     payload = {"x": 1}
     cache_mod.write_cache("expired_key", payload)
     # Backdate the cache file
@@ -68,12 +68,12 @@ def test_read_cache_expired(tmp_path, monkeypatch):
 
 
 def test_clear_cache(tmp_path, monkeypatch):
-    monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(cache_mod, "get_cache_dir", lambda: tmp_path)
     cache_mod.write_cache("clear_key", {"v": 1})
     assert cache_mod.clear_cache("clear_key") is True
     assert cache_mod.read_cache("clear_key", ttl=3600) is None
 
 
 def test_clear_cache_missing_returns_false(tmp_path, monkeypatch):
-    monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(cache_mod, "get_cache_dir", lambda: tmp_path)
     assert cache_mod.clear_cache("nonexistent") is False
