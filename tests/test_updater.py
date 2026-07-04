@@ -1,7 +1,7 @@
-import json
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
 import requests_mock as req_mock
+from freezegun import freeze_time
 
 from fiveclis import updater as upd
 
@@ -54,28 +54,22 @@ def test_get_release_summary_empty():
 
 def test_get_latest_version_from_cache(tmp_path, monkeypatch):
     monkeypatch.setattr(upd, "get_cache_dir", lambda: tmp_path)
-    cache_file = tmp_path / "latest_version.json"
-    cache_file.write_text(
-        json.dumps(
-            {
-                "latest_version": "9.9.9",
-                "checked_at": datetime.now(timezone.utc).isoformat(),
-            }
-        )
-    )
-    assert upd.get_latest_version() == "9.9.9"
+    with freeze_time("2026-01-01 12:00:00") as frozen:
+        upd._write_version_cache("9.9.9")
+        frozen.tick(timedelta(hours=1))
+        assert upd.get_latest_version() == "9.9.9"
 
 
 def test_get_latest_version_expired_cache_fetches_api(tmp_path, monkeypatch):
     monkeypatch.setattr(upd, "get_cache_dir", lambda: tmp_path)
-    old = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
-    cache_file = tmp_path / "latest_version.json"
-    cache_file.write_text(json.dumps({"latest_version": "0.0.1", "checked_at": old}))
-
-    with req_mock.Mocker() as m:
-        m.get(
-            f"https://api.github.com/repos/{upd._UPDATE_CHECK_REPO}/releases/latest",
-            json={"tag_name": "v2.0.0", "body": None},
-        )
-        result = upd.get_latest_version()
+    with freeze_time("2026-01-01 12:00:00") as frozen:
+        upd._write_version_cache("0.0.1")
+        frozen.tick(timedelta(days=2))
+        with req_mock.Mocker() as m:
+            m.get(
+                f"https://api.github.com/repos/{upd._UPDATE_CHECK_REPO}"
+                "/releases/latest",
+                json={"tag_name": "v2.0.0", "body": None},
+            )
+            result = upd.get_latest_version()
     assert result == "2.0.0"

@@ -1,7 +1,7 @@
-import json
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
 import pytest
+from freezegun import freeze_time
 
 from fiveclis import cache as cache_mod
 
@@ -57,14 +57,11 @@ def test_read_cache_miss_no_file(tmp_path, monkeypatch):
 def test_read_cache_expired(tmp_path, monkeypatch):
     monkeypatch.setattr(cache_mod, "get_cache_dir", lambda: tmp_path)
     payload = {"x": 1}
-    cache_mod.write_cache("expired_key", payload)
-    # Backdate the cache file
-    path = tmp_path / "expired_key.json"
-    data = json.loads(path.read_text())
-    old_time = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
-    data["fetched_at"] = old_time
-    path.write_text(json.dumps(data))
-    assert cache_mod.read_cache("expired_key", ttl=300) is None
+    with freeze_time("2026-01-01 12:00:00") as frozen:
+        cache_mod.write_cache("expired_key", payload)
+        assert cache_mod.read_cache("expired_key", ttl=300) == payload
+        frozen.tick(timedelta(hours=2))
+        assert cache_mod.read_cache("expired_key", ttl=300) is None
 
 
 def test_clear_cache(tmp_path, monkeypatch):

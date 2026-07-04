@@ -23,6 +23,7 @@ five-clis = "fiveclis.cli:main"
 
 [project.optional-dependencies]
 test = [
+  "freezegun",
   "pytest",
   "requests-mock",
 ]
@@ -37,6 +38,7 @@ build = [
 dev = [
   "black",
   "click-man",
+  "freezegun",
   "pytest",
   "requests-mock",
   "ruff",

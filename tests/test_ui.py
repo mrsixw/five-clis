@@ -1,4 +1,4 @@
-import datetime
+from freezegun import freeze_time
 
 from fiveclis.ui import (
     HOLI_RAINBOW,
@@ -85,35 +85,23 @@ def test_apply_seasonal_colour_unknown_calendar():
     assert result == "hello"
 
 
-def test_apply_seasonal_colour_january(monkeypatch):
-    fixed = datetime.date(2026, 1, 15)
-    monkeypatch.setattr(
-        "fiveclis.ui.datetime.date",
-        type("MockDate", (), {"today": staticmethod(lambda: fixed)}),
-    )
+@freeze_time("2026-01-15")
+def test_apply_seasonal_colour_january():
     result = apply_seasonal_colour("hello", 0, calendar="western")
     assert SEASONAL_PALETTES["purple"] in result
 
 
-def test_january_does_not_shadow_other_calendars(monkeypatch):
+@freeze_time("2031-01-23")
+def test_january_does_not_shadow_other_calendars():
     # Lunar New Year 2031 falls on 23 January; the east-asian calendar must
     # see it rather than being overridden by the western New Year purple.
-    fixed = datetime.date(2031, 1, 23)
-    monkeypatch.setattr(
-        "fiveclis.ui.datetime.date",
-        type("MockDate", (), {"today": staticmethod(lambda: fixed)}),
-    )
     result = apply_seasonal_colour("hello", 0, calendar="east-asian")
     assert SEASONAL_PALETTES["lny"] in result
     assert SEASONAL_PALETTES["purple"] not in result
 
 
-def test_apply_seasonal_colour_june_cycles(monkeypatch):
-    fixed = datetime.date(2026, 6, 15)
-    monkeypatch.setattr(
-        "fiveclis.ui.datetime.date",
-        type("MockDate", (), {"today": staticmethod(lambda: fixed)}),
-    )
+@freeze_time("2026-06-15")
+def test_apply_seasonal_colour_june_cycles():
     r0 = apply_seasonal_colour("a", 0, calendar="western")
     r1 = apply_seasonal_colour("a", 1, calendar="western")
     assert r0 != r1
