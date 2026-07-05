@@ -18,7 +18,7 @@ build: .venv
 
 install: build
 	install -d "$(DESTDIR)$(BINDIR)"
-	install -m 755 five-clis "$(DESTDIR)$(BINDIR)/five-clis"
+	install -m 755 dist/five-clis "$(DESTDIR)$(BINDIR)/five-clis"
 
 uninstall:
 	rm -f "$(DESTDIR)$(BINDIR)/five-clis"
