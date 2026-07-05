@@ -8,6 +8,7 @@ from importlib.metadata import version as pkg_version
 
 import requests
 
+from .fsutil import atomic_write_text
 from .logger import logger
 from .xdg import get_cache_dir
 
@@ -59,7 +60,7 @@ def _write_version_cache(latest_version, release_body=None):
         }
         if release_body is not None:
             payload["release_body"] = release_body
-        cache_file.write_text(json.dumps(payload))
+        atomic_write_text(cache_file, json.dumps(payload))
     except OSError as exc:
         logger.debug("version_cache_write_error error=%r", str(exc))
 

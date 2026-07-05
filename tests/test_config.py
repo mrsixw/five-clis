@@ -126,3 +126,16 @@ def test_update_config_adds_missing_keys(monkeypatch, tmp_path):
     assert "no-update-check" in updated
     # existing key not duplicated
     assert updated.count("# theme =") == 1
+
+
+def test_update_config_preserves_modes(monkeypatch, tmp_path):
+    from fiveclis import config as cfg_mod
+
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text("# minimal config\n")
+    cfg_file.chmod(0o600)
+    monkeypatch.setattr(cfg_mod, "get_config_paths", lambda: [cfg_file])
+    assert update_config() is True
+    assert (cfg_file.stat().st_mode & 0o777) == 0o600
+    backup = next(tmp_path.glob("config.toml.bak.*"))
+    assert (backup.stat().st_mode & 0o777) == 0o600

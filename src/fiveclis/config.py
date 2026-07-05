@@ -12,6 +12,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
+from .fsutil import atomic_write_text
 from .xdg import get_config_dir, get_config_paths
 
 _DEFAULT_CONFIG_CONTENT = """\
@@ -83,7 +84,7 @@ def write_default_config() -> Path:
     config_dir.mkdir(parents=True, exist_ok=True)
     config_path = config_dir / "config.toml"
     if not config_path.exists():
-        config_path.write_text(_DEFAULT_CONFIG_CONTENT, encoding="utf-8")
+        atomic_write_text(config_path, _DEFAULT_CONFIG_CONTENT)
     return config_path
 
 
@@ -189,7 +190,10 @@ def update_config(config_path: str | None = None) -> bool:
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     backup_path = existing_path.parent / (existing_path.name + f".bak.{timestamp}")
     try:
-        backup_path.write_text(existing_content, encoding="utf-8")
+        # the backup holds the same secrets as the config; match its mode
+        atomic_write_text(
+            backup_path, existing_content, mode=existing_path.stat().st_mode
+        )
     except OSError as exc:
         click.echo(click.style(f"Error writing backup: {exc}", fg="red"), err=True)
         return False
@@ -213,7 +217,7 @@ def update_config(config_path: str | None = None) -> bool:
         new_content += f"\n{block}\n"
 
     try:
-        existing_path.write_text(new_content, encoding="utf-8")
+        atomic_write_text(existing_path, new_content)
     except OSError as exc:
         click.echo(click.style(f"Error writing config: {exc}", fg="red"), err=True)
         return False
