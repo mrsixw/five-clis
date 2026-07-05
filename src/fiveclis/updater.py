@@ -8,7 +8,7 @@ from importlib.metadata import version as pkg_version
 
 import requests
 
-from .cache import atomic_write_text
+from .fsutil import atomic_write_text
 from .logger import logger
 from .xdg import get_cache_dir
 

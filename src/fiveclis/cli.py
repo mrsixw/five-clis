@@ -17,7 +17,7 @@ import random
 import click
 
 from .cache import parse_ttl
-from .config import load_config, show_config, write_default_config
+from .config import load_config, show_config, update_config, write_default_config
 from .logger import configure as configure_logging
 from .settings import Settings
 from .ui import APP_ITEMS, CALENDAR_NAMES, THEME_NAMES, get_theme
@@ -211,6 +211,14 @@ def config_init():
     """Write a default config file to the XDG config directory."""
     path = write_default_config()
     click.echo(f"✅ Default config written to: {path}")
+
+
+@config_group.command("update")
+@click.pass_obj
+def config_update(settings: Settings):
+    """Merge missing keys from the template into your config file (with backup)."""
+    if not update_config(settings.config_path):
+        raise SystemExit(1)
 
 
 # ── Shell completions ───────────────────────────────────────────────────────

@@ -20,6 +20,12 @@ Print the resolved configuration.
 
 Write a default config file to `~/.config/fiveclis/config.toml`.
 
+### `config update`
+
+Merge any options missing from your existing config file in from the
+template, writing a timestamped backup first. Useful after upgrading to a
+release that introduces new config keys.
+
 ### `completion [bash|zsh|fish]`
 
 Print the shell completion script. Eval in your shell config:

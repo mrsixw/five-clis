@@ -1,21 +1,13 @@
 import json
-import os
 from datetime import datetime, timezone
-from pathlib import Path
 
 import click
 
+from .fsutil import atomic_write_text
 from .logger import logger
 from .xdg import get_cache_dir
 
 _SUFFIX_MAP = {"s": 1, "m": 60, "h": 3600}
-
-
-def atomic_write_text(path: Path, content: str) -> None:
-    """Write *content* to *path* atomically via temp file + os.replace."""
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(content)
-    os.replace(tmp, path)
 
 
 def parse_ttl(value: str | int) -> int:

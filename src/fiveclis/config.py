@@ -1,11 +1,18 @@
+import re
 import sys
+from datetime import datetime
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as pkg_version
 from pathlib import Path
+
+import click
 
 if sys.version_info >= (3, 11):
     import tomllib
 else:
     import tomli as tomllib
 
+from .fsutil import atomic_write_text
 from .xdg import get_config_dir, get_config_paths
 
 _DEFAULT_CONFIG_CONTENT = """\
@@ -82,7 +89,7 @@ def write_default_config() -> Path:
     config_dir.mkdir(parents=True, exist_ok=True)
     config_path = config_dir / "config.toml"
     if not config_path.exists():
-        config_path.write_text(_DEFAULT_CONFIG_CONTENT, encoding="utf-8")
+        atomic_write_text(config_path, _DEFAULT_CONFIG_CONTENT)
     return config_path
 
 
@@ -101,3 +108,129 @@ def show_config(cfg: dict, config_path: str | None = None) -> str:
     else:
         lines.append("  (no config keys set)")
     return "\n".join(lines)
+
+
+def _extract_option_blocks(content: str) -> list[tuple[str, str]]:
+    """Parse a config template into (key, block_text) pairs.
+
+    Each block_text is the comment run leading up to (and including)
+    the option definition line ``# key = default_value``.
+    """
+    lines = content.splitlines(keepends=True)
+    results: list[tuple[str, str]] = []
+    block_start: int | None = None
+
+    for i, line in enumerate(lines):
+        bare = line.rstrip("\n").strip()
+
+        if bare == "" or re.match(r"^# [-=]{5,}", bare):
+            block_start = None
+            continue
+
+        if bare.startswith("#"):
+            if block_start is None:
+                block_start = i
+            m = re.match(r"^# ([a-z][a-z0-9-]+) =", bare)
+            if m:
+                key = m.group(1)
+                block_text = "".join(lines[block_start : i + 1]).rstrip()
+                results.append((key, block_text))
+                block_start = None
+
+    return results
+
+
+def _key_present_in_file(key: str, content: str) -> bool:
+    """Return True if *key* appears as an active or commented option."""
+    pattern = rf"^#?\s*{re.escape(key)}\s*="
+    return bool(re.search(pattern, content, re.MULTILINE))
+
+
+def update_config(config_path: str | None = None) -> bool:
+    """Append any missing options to the existing config file.
+
+    Resolves the config file using the same priority order as load_config().
+    Creates a timestamped backup before making any changes. Returns True on
+    success (including when already up to date) and False on error.
+    """
+    if config_path:
+        paths = [Path(config_path)]
+    else:
+        paths = get_config_paths()
+
+    existing_path = next((p for p in paths if p.exists()), None)
+
+    if existing_path is None:
+        click.echo(
+            click.style(
+                "No config file found. Run five-clis config init to create one.",
+                fg="red",
+                bold=True,
+            ),
+            err=True,
+        )
+        return False
+
+    click.echo(f"📋 Updating config at {existing_path}", err=True)
+
+    try:
+        existing_content = existing_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        click.echo(click.style(f"Error reading config: {exc}", fg="red"), err=True)
+        return False
+
+    option_blocks = _extract_option_blocks(_DEFAULT_CONFIG_CONTENT)
+    missing = [
+        (key, block)
+        for key, block in option_blocks
+        if not _key_present_in_file(key, existing_content)
+    ]
+
+    if not missing:
+        click.echo(
+            click.style("✅ Config is already up to date.", fg="green"), err=True
+        )
+        return True
+
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    backup_path = existing_path.parent / (existing_path.name + f".bak.{timestamp}")
+    try:
+        # the backup holds the same secrets as the config; match its mode
+        atomic_write_text(
+            backup_path, existing_content, mode=existing_path.stat().st_mode
+        )
+    except OSError as exc:
+        click.echo(click.style(f"Error writing backup: {exc}", fg="red"), err=True)
+        return False
+    click.echo(f"💾 Backup saved to {backup_path}", err=True)
+
+    try:
+        _version = pkg_version("fiveclis")
+    except PackageNotFoundError:
+        _version = "unknown"
+
+    readable_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    separator = (
+        f"# --- Added by config update (five-clis v{_version}) on {readable_ts} ---"
+    )
+
+    new_content = existing_content
+    if not new_content.endswith("\n"):
+        new_content += "\n"
+    new_content += f"\n{separator}\n"
+    for _key, block in missing:
+        new_content += f"\n{block}\n"
+
+    try:
+        atomic_write_text(existing_path, new_content)
+    except OSError as exc:
+        click.echo(click.style(f"Error writing config: {exc}", fg="red"), err=True)
+        return False
+
+    click.echo(
+        click.style(f"✅ Added {len(missing)} missing option(s):", fg="green"), err=True
+    )
+    for key, _ in missing:
+        click.echo(f"   {key}", err=True)
+
+    return True

@@ -143,3 +143,23 @@ def test_settings_resolution_config_beats_default(tmp_path, monkeypatch):
     cfg.write_text('theme = "rainbow"\n"cache-ttl" = "5m"\n')
     result = _invoke("--config", str(cfg), "--no-colour", "greet")
     assert result.exit_code == 0
+
+
+def test_config_update_no_config_exits_1(tmp_path, monkeypatch):
+    from fiveclis import config as cfg_mod
+
+    missing = tmp_path / "missing.toml"
+    monkeypatch.setattr(cfg_mod, "get_config_paths", lambda: [missing])
+    result = _invoke("config", "update")
+    assert result.exit_code == 1
+
+
+def test_config_update_up_to_date_exits_0(tmp_path, monkeypatch):
+    from fiveclis import config as cfg_mod
+    from fiveclis.config import _DEFAULT_CONFIG_CONTENT
+
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text(_DEFAULT_CONFIG_CONTENT)
+    monkeypatch.setattr(cfg_mod, "get_config_paths", lambda: [cfg_file])
+    result = _invoke("config", "update")
+    assert result.exit_code == 0
