@@ -1,22 +1,14 @@
 import json
-import os
 from datetime import datetime, timezone
-from pathlib import Path
 
 import click
 
+from .fsutil import atomic_write_text
 from .logger import logger
 from .xdg import get_cache_dir
 
 _CACHE_DIR = get_cache_dir()
 _SUFFIX_MAP = {"s": 1, "m": 60, "h": 3600}
-
-
-def _atomic_write_text(path: Path, content: str) -> None:
-    """Write *content* to *path* atomically via temp file + os.replace."""
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(content)
-    os.replace(tmp, path)
 
 
 def parse_ttl(value: str | int) -> int:
@@ -91,7 +83,7 @@ def write_cache(key: str, payload: dict | list) -> None:
             "fetched_at": datetime.now(timezone.utc).isoformat(),
             "payload": payload,
         }
-        _atomic_write_text(path, json.dumps(data))
+        atomic_write_text(path, json.dumps(data))
         logger.debug("cache_write key=%s", key)
     except OSError as exc:
         logger.warning("cache_write_error key=%s error=%r", key, str(exc))
