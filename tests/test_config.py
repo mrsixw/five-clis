@@ -11,9 +11,16 @@ from fiveclis.config import (
 )
 
 
-def test_load_config_no_file_returns_empty(tmp_path):
-    result = load_config(str(tmp_path / "nonexistent.toml"))
-    assert result == {}
+def test_load_config_missing_explicit_path_raises(tmp_path):
+    with pytest.raises(ValueError, match="not found"):
+        load_config(str(tmp_path / "nonexistent.toml"))
+
+
+def test_load_config_no_search_path_hit_returns_empty(tmp_path, monkeypatch):
+    from fiveclis import config as cfg_mod
+
+    monkeypatch.setattr(cfg_mod, "get_config_paths", lambda: [tmp_path / "none.toml"])
+    assert load_config() == {}
 
 
 def test_load_config_reads_toml(tmp_path):

@@ -16,9 +16,9 @@ If you see no colours, check:
 
 ## Config file not found
 
-Run `five-clis --init-config` to create a default config at `~/.config/fiveclis/config.toml`.
+Run `five-clis config init` to create a default config at `~/.config/fiveclis/config.toml`.
 
-Use `five-clis --show-config` to see which config file is being used and what keys are set.
+Use `five-clis config show` to see which config file is being used and what keys are set.
 
 ## Update check fails silently
 

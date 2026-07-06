@@ -7,7 +7,6 @@ from .fsutil import atomic_write_text
 from .logger import logger
 from .xdg import get_cache_dir
 
-_CACHE_DIR = get_cache_dir()
 _SUFFIX_MAP = {"s": 1, "m": 60, "h": 3600}
 
 
@@ -50,7 +49,7 @@ def parse_ttl(value: str | int) -> int:
 
 def read_cache(key: str, ttl: int) -> dict | None:
     """Return cached data for *key* if present and within *ttl* seconds, else None."""
-    path = _CACHE_DIR / f"{key}.json"
+    path = get_cache_dir() / f"{key}.json"
     try:
         if not path.exists():
             logger.debug("cache_miss key=%s reason=file_not_found", key)
@@ -77,8 +76,9 @@ def read_cache(key: str, ttl: int) -> dict | None:
 def write_cache(key: str, payload: dict | list) -> None:
     """Write *payload* to disk cache under *key*."""
     try:
-        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        path = _CACHE_DIR / f"{key}.json"
+        cache_dir = get_cache_dir()
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        path = cache_dir / f"{key}.json"
         data = {
             "fetched_at": datetime.now(timezone.utc).isoformat(),
             "payload": payload,
@@ -95,7 +95,7 @@ def write_cache(key: str, payload: dict | list) -> None:
 
 def clear_cache(key: str) -> bool:
     """Delete the cache file for *key*. Returns True if deleted, False if not found."""
-    path = _CACHE_DIR / f"{key}.json"
+    path = get_cache_dir() / f"{key}.json"
     try:
         path.unlink()
         logger.debug("cache_cleared key=%s", key)

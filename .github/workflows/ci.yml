@@ -140,11 +140,11 @@ jobs:
           test -f completions/_five-clis
           test -f completions/five-clis.fish
 
-      - name: Verify --completion flag works for all shells
+      - name: Verify completion command works for all shells
         run: |
-          uv run five-clis --completion bash | grep -q "_FIVE_CLIS_COMPLETE"
-          uv run five-clis --completion zsh | grep -q "_FIVE_CLIS_COMPLETE"
-          uv run five-clis --completion fish | grep -q "_FIVE_CLIS_COMPLETE"
+          uv run five-clis completion bash | grep -q "_FIVE_CLIS_COMPLETE"
+          uv run five-clis completion zsh | grep -q "_FIVE_CLIS_COMPLETE"
+          uv run five-clis completion fish | grep -q "_FIVE_CLIS_COMPLETE"
 
   release:
     if: "github.ref == 'refs/heads/main' && github.event_name == 'push' && !startsWith(github.event.head_commit.message, 'chore: bump version')"

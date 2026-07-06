@@ -8,7 +8,8 @@
 
 ## Project Structure
 - `src/fiveclis/` — package source code
-  - `cli.py` — Click entrypoint (replace greet logic with your own)
+  - `cli.py` — Click group entrypoint; subcommands share one `Settings` via `ctx.obj` (replace `greet` with your own commands)
+  - `settings.py` — `Settings` dataclass resolved from flags + config file, received by subcommands via `@click.pass_obj`
   - `ui.py` — Terminal themes, seasonal colour system (SEASONAL_PALETTES, PRIDE_RAINBOW, HOLI_RAINBOW, THEMES registry)
   - `config.py` — TOML configuration loader
   - `cache.py` — Generic TTL disk cache

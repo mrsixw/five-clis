@@ -55,7 +55,8 @@ echo -ne "${BLUE}Installed version: ${RESET}"
 "${EXECUTABLE_PATH}" --version
 
 echo -e "${YELLOW}Initializing default configuration...${RESET}"
-"${EXECUTABLE_PATH}" --init-config
+# 'config init' on current releases; fall back for pre-0.3 binaries
+"${EXECUTABLE_PATH}" config init 2>/dev/null || "${EXECUTABLE_PATH}" --init-config
 
 echo -e "${YELLOW}Installing man page...${RESET}"
 mkdir -p "${MAN_DIR}"

@@ -19,58 +19,67 @@ def test_help():
     result = _invoke("--help")
     assert result.exit_code == 0
     assert "--theme" in result.output
-    assert "--completion" in result.output
+    assert "greet" in result.output
+    assert "completion" in result.output
+    assert "config" in result.output
 
 
-def test_greet_default(monkeypatch):
+def test_bare_invocation_runs_greet(monkeypatch):
     monkeypatch.setattr(cli_mod, "check_for_update", lambda **_kw: None)
     result = _invoke("--no-colour")
     assert result.exit_code == 0
     assert "Hello" in result.output
 
 
+def test_greet_default(monkeypatch):
+    monkeypatch.setattr(cli_mod, "check_for_update", lambda **_kw: None)
+    result = _invoke("--no-colour", "greet")
+    assert result.exit_code == 0
+    assert "Hello" in result.output
+
+
 def test_greet_with_name(monkeypatch):
     monkeypatch.setattr(cli_mod, "check_for_update", lambda **_kw: None)
-    result = _invoke("--name", "Alice", "--no-colour")
+    result = _invoke("--no-colour", "greet", "--name", "Alice")
     assert result.exit_code == 0
     assert "Alice" in result.output
 
 
 def test_completion_bash():
-    result = _invoke("--completion", "bash")
+    result = _invoke("completion", "bash")
     assert result.exit_code == 0
     assert "_FIVE_CLIS_COMPLETE" in result.output
 
 
 def test_completion_zsh():
-    result = _invoke("--completion", "zsh")
+    result = _invoke("completion", "zsh")
     assert result.exit_code == 0
 
 
 def test_completion_fish():
-    result = _invoke("--completion", "fish")
+    result = _invoke("completion", "fish")
     assert result.exit_code == 0
 
 
-def test_init_config(tmp_path, monkeypatch):
+def test_config_init(tmp_path, monkeypatch):
     from fiveclis import config as cfg_mod
 
     monkeypatch.setattr(cfg_mod, "get_config_dir", lambda: tmp_path / "fiveclis")
-    result = _invoke("--init-config")
+    result = _invoke("config", "init")
     assert result.exit_code == 0
     assert "config.toml" in result.output
 
 
-def test_show_config(monkeypatch):
+def test_config_show(monkeypatch):
     monkeypatch.setattr(cli_mod, "check_for_update", lambda **_kw: None)
-    result = _invoke("--show-config")
+    result = _invoke("config", "show")
     assert result.exit_code == 0
     assert "Config file" in result.output
 
 
 def test_theme_rainbow(monkeypatch):
     monkeypatch.setattr(cli_mod, "check_for_update", lambda **_kw: None)
-    result = _invoke("--theme", "rainbow")
+    result = _invoke("--theme", "rainbow", "greet")
     assert result.exit_code == 0
 
 
@@ -82,7 +91,7 @@ def test_no_update_check_skips_update(monkeypatch):
         return None
 
     monkeypatch.setattr(cli_mod, "check_for_update", counting_check)
-    _invoke("--no-update-check", "--no-colour")
+    _invoke("--no-update-check", "--no-colour", "greet")
     assert called["n"] == 0
 
 
@@ -94,32 +103,63 @@ def test_update_check_runs_by_default(monkeypatch):
         return None
 
     monkeypatch.setattr(cli_mod, "check_for_update", counting_check)
-    _invoke("--no-colour")
+    _invoke("--no-colour", "greet")
     assert called["n"] == 1
+
+
+def test_update_check_not_run_for_config_show(monkeypatch):
+    called = {"n": 0}
+
+    def counting_check(**kw):
+        called["n"] += 1
+        return None
+
+    monkeypatch.setattr(cli_mod, "check_for_update", counting_check)
+    _invoke("config", "show")
+    assert called["n"] == 0
 
 
 def test_invalid_config_exits_with_error(tmp_path):
     bad_cfg = tmp_path / "bad.toml"
     bad_cfg.write_text("not = [valid toml")
-    result = _invoke("--config", str(bad_cfg))
+    result = _invoke("--config", str(bad_cfg), "greet")
     assert result.exit_code == 1
 
 
-def test_update_config_no_config_exits_1(tmp_path, monkeypatch):
+def test_missing_explicit_config_exits_with_error(tmp_path):
+    result = _invoke("--config", str(tmp_path / "nope.toml"), "greet")
+    assert result.exit_code == 1
+    assert "not found" in result.output
+
+
+def test_invalid_cache_ttl_exits_with_error():
+    result = _invoke("--cache-ttl", "banana", "greet")
+    assert result.exit_code == 1
+
+
+def test_settings_resolution_config_beats_default(tmp_path, monkeypatch):
+    monkeypatch.setattr(cli_mod, "check_for_update", lambda **_kw: None)
+    cfg = tmp_path / "cfg.toml"
+    cfg.write_text('theme = "rainbow"\n"cache-ttl" = "5m"\n')
+    result = _invoke("--config", str(cfg), "--no-colour", "greet")
+    assert result.exit_code == 0
+
+
+def test_config_update_no_config_exits_1(tmp_path, monkeypatch):
     from fiveclis import config as cfg_mod
 
     missing = tmp_path / "missing.toml"
     monkeypatch.setattr(cfg_mod, "get_config_paths", lambda: [missing])
-    result = _invoke("--update-config")
+    result = _invoke("config", "update")
     assert result.exit_code == 1
 
 
-def test_update_config_up_to_date_exits_0(tmp_path, monkeypatch):
+def test_config_update_up_to_date_exits_0(tmp_path, monkeypatch):
     from fiveclis import config as cfg_mod
     from fiveclis.config import _DEFAULT_CONFIG_CONTENT
 
     cfg_file = tmp_path / "config.toml"
     cfg_file.write_text(_DEFAULT_CONFIG_CONTENT)
     monkeypatch.setattr(cfg_mod, "get_config_paths", lambda: [cfg_file])
-    result = _invoke("--update-config")
+    result = _invoke("config", "update")
     assert result.exit_code == 0

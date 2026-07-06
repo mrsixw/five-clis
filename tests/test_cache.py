@@ -1,7 +1,7 @@
-import json
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
 import pytest
+from freezegun import freeze_time
 
 from fiveclis import cache as cache_mod
 
@@ -42,7 +42,7 @@ def test_parse_ttl_bool_raises():
 
 
 def test_write_and_read_cache(tmp_path, monkeypatch):
-    monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(cache_mod, "get_cache_dir", lambda: tmp_path)
     payload = {"answer": 42, "items": ["a", "b"]}
     cache_mod.write_cache("test_key", payload)
     result = cache_mod.read_cache("test_key", ttl=3600)
@@ -50,30 +50,27 @@ def test_write_and_read_cache(tmp_path, monkeypatch):
 
 
 def test_read_cache_miss_no_file(tmp_path, monkeypatch):
-    monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(cache_mod, "get_cache_dir", lambda: tmp_path)
     assert cache_mod.read_cache("missing_key", ttl=300) is None
 
 
 def test_read_cache_expired(tmp_path, monkeypatch):
-    monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(cache_mod, "get_cache_dir", lambda: tmp_path)
     payload = {"x": 1}
-    cache_mod.write_cache("expired_key", payload)
-    # Backdate the cache file
-    path = tmp_path / "expired_key.json"
-    data = json.loads(path.read_text())
-    old_time = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
-    data["fetched_at"] = old_time
-    path.write_text(json.dumps(data))
-    assert cache_mod.read_cache("expired_key", ttl=300) is None
+    with freeze_time("2026-01-01 12:00:00") as frozen:
+        cache_mod.write_cache("expired_key", payload)
+        assert cache_mod.read_cache("expired_key", ttl=300) == payload
+        frozen.tick(timedelta(hours=2))
+        assert cache_mod.read_cache("expired_key", ttl=300) is None
 
 
 def test_clear_cache(tmp_path, monkeypatch):
-    monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(cache_mod, "get_cache_dir", lambda: tmp_path)
     cache_mod.write_cache("clear_key", {"v": 1})
     assert cache_mod.clear_cache("clear_key") is True
     assert cache_mod.read_cache("clear_key", ttl=3600) is None
 
 
 def test_clear_cache_missing_returns_false(tmp_path, monkeypatch):
-    monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(cache_mod, "get_cache_dir", lambda: tmp_path)
     assert cache_mod.clear_cache("nonexistent") is False

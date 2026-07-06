@@ -535,15 +535,20 @@ def _western_calendar(today: datetime.date) -> "str | list[str] | None":
     month = today.month
     day = today.day
 
+    if month == 1:
+        return SEASONAL_PALETTES["purple"]
     if month == 12:
         return [SEASONAL_PALETTES["red"], SEASONAL_PALETTES["green"]]
     if month == 6:
         return PRIDE_RAINBOW
     if month == 2 and day == 14:
         return SEASONAL_PALETTES["pink"]
-    lny = _lny_date(today.year)
-    if lny == (month, day) and month == 2:
-        return SEASONAL_PALETTES["lny"]
+    if month == 2:
+        try:
+            if _lny_date(today.year) == (month, day):
+                return SEASONAL_PALETTES["lny"]
+        except ValueError:
+            pass
     if month == _easter_month(today.year):
         return SEASONAL_PALETTES["yellow"]
     if month == 10:
@@ -560,6 +565,8 @@ CALENDARS: dict[str, object] = {
     "western": _western_calendar,
 }
 
+CALENDAR_NAMES = ["western", "jewish", "islamic", "hindu", "sikh", "east-asian"]
+
 
 def apply_seasonal_colour(text: str, index: int, calendar: str = "western") -> str:
     """Wrap *text* in a seasonal ANSI colour based on the current date.
@@ -573,9 +580,6 @@ def apply_seasonal_colour(text: str, index: int, calendar: str = "western") -> s
     if calendar_fn is None:
         return text
     today = datetime.date.today()
-    if today.month == 1:
-        colour = SEASONAL_PALETTES["purple"]
-        return f"{colour}{text}{_RESET}"
     result = calendar_fn(today)
     if result is None:
         return text

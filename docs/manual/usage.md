@@ -3,11 +3,14 @@
 ## Basic usage
 
 ```bash
-five-clis
-five-clis --name Alice
+five-clis                       # same as: five-clis greet
+five-clis greet --name Alice
 five-clis --theme rainbow
 five-clis --no-colour
 ```
+
+Global options (`--theme`, `--no-colour`, `--config`, …) go before the
+subcommand; they are resolved once and shared with every command.
 
 ## Themes
 
@@ -32,17 +35,17 @@ five-clis --no-seasonal-colours            # disable entirely
 ## Config file
 
 ```bash
-five-clis --init-config       # write ~/.config/fiveclis/config.toml
-five-clis --show-config       # print resolved config
-five-clis --config my.toml    # use a custom config file
+five-clis config init               # write ~/.config/fiveclis/config.toml
+five-clis config show               # print resolved config
+five-clis --config my.toml greet    # use a custom config file
 ```
 
 ## Shell completions
 
 ```bash
-eval "$(five-clis --completion bash)"   # bash
-eval "$(five-clis --completion zsh)"    # zsh
-five-clis --completion fish | source    # fish
+eval "$(five-clis completion bash)"   # bash
+eval "$(five-clis completion zsh)"    # zsh
+five-clis completion fish | source    # fish
 ```
 
 ## Caching
