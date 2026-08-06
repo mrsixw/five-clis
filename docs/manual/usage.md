@@ -43,9 +43,9 @@ five-clis --config my.toml greet    # use a custom config file
 ## Shell completions
 
 ```bash
-eval "$(five-clis completion bash)"   # bash
-eval "$(five-clis completion zsh)"    # zsh
-five-clis completion fish | source    # fish
+eval "$(five-clis completions bash)"   # bash
+eval "$(five-clis completions zsh)"    # zsh
+five-clis completions fish | source    # fish
 ```
 
 ## Caching

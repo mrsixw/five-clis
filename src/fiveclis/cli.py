@@ -226,10 +226,10 @@ def config_update(settings: Settings):
 
 @main.command()
 @click.argument("shell", type=click.Choice(["bash", "zsh", "fish"]))
-def completion(shell: str):
+def completions(shell: str):
     """Print the shell completion script for SHELL.
 
-    Eval it in your shell config, e.g. ``eval "$(five-clis completion bash)"``.
+    Eval it in your shell config, e.g. ``eval "$(five-clis completions bash)"``.
     """
     from click.shell_completion import get_completion_class
 

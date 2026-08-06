@@ -20,7 +20,7 @@ def test_help():
     assert result.exit_code == 0
     assert "--theme" in result.output
     assert "greet" in result.output
-    assert "completion" in result.output
+    assert "completions" in result.output
     assert "config" in result.output
 
 
@@ -46,18 +46,18 @@ def test_greet_with_name(monkeypatch):
 
 
 def test_completion_bash():
-    result = _invoke("completion", "bash")
+    result = _invoke("completions", "bash")
     assert result.exit_code == 0
     assert "_FIVE_CLIS_COMPLETE" in result.output
 
 
 def test_completion_zsh():
-    result = _invoke("completion", "zsh")
+    result = _invoke("completions", "zsh")
     assert result.exit_code == 0
 
 
 def test_completion_fish():
-    result = _invoke("completion", "fish")
+    result = _invoke("completions", "fish")
     assert result.exit_code == 0
 
 

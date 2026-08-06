@@ -65,7 +65,7 @@ five-clis --theme rainbow
 five-clis greet --name Alice
 five-clis config init
 five-clis config show
-eval "$(five-clis completion bash)"
+eval "$(five-clis completions bash)"
 ```
 
 ## Using this template
