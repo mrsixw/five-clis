@@ -26,13 +26,31 @@ Merge any options missing from your existing config file in from the
 template, writing a timestamped backup first. Useful after upgrading to a
 release that introduces new config keys.
 
-### `completion [bash|zsh|fish]`
+### `completions [bash|zsh|fish]`
 
 Print the shell completion script. Eval in your shell config:
 
 ```bash
-eval "$(five-clis completion bash)"
+eval "$(five-clis completions bash)"
 ```
+
+### `update`
+
+Download the latest release and replace the running executable with it.
+
+```bash
+five-clis update
+```
+
+The replacement is atomic, so an interrupted download leaves the working
+binary in place. Nothing is written unless a newer release actually exists.
+
+The man page is not refreshed — re-run `install.sh` for that. Completion
+scripts need no refresh: they call back into the binary, so they follow it
+automatically.
+
+Not to be confused with `config update`, which merges new keys into your
+config file, or `--no-update-check`, which silences the passive notice.
 
 ## Display options
 

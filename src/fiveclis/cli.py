@@ -13,6 +13,9 @@ through every function signature.
 
 import os
 import random
+import shutil
+import sys
+from enum import StrEnum, auto
 
 import click
 
@@ -21,7 +24,7 @@ from .config import load_config, show_config, update_config, write_default_confi
 from .logger import configure as configure_logging
 from .settings import Settings
 from .ui import APP_ITEMS, CALENDAR_NAMES, THEME_NAMES, get_theme
-from .updater import check_for_update
+from .updater import UpdateStatus, check_for_update, perform_update
 
 _ENVVAR_PREFIX = "FIVE_CLIS"
 _CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
@@ -224,16 +227,34 @@ def config_update(settings: Settings):
 # ── Shell completions ───────────────────────────────────────────────────────
 
 
+class Shell(StrEnum):
+    """A shell that ``completions`` can emit a completion script for.
+
+    ``StrEnum`` + ``auto()`` yields the lowercase member name as the value, so
+    members pass straight into Click's completion machinery and into f-strings
+    without a trail of ``.value``.
+    """
+
+    BASH = auto()
+    ZSH = auto()
+    FISH = auto()
+
+
+# Click matches enum choices on member *names*, so click.Choice(Shell) would
+# demand "BASH" rather than "bash" — pass the values explicitly instead.
+_SHELL_CHOICES = [shell.value for shell in Shell]
+
+
 @main.command()
-@click.argument("shell", type=click.Choice(["bash", "zsh", "fish"]))
-def completion(shell: str):
+@click.argument("shell", type=click.Choice(_SHELL_CHOICES))
+def completions(shell: str):
     """Print the shell completion script for SHELL.
 
-    Eval it in your shell config, e.g. ``eval "$(five-clis completion bash)"``.
+    Eval it in your shell config, e.g. ``eval "$(five-clis completions bash)"``.
     """
     from click.shell_completion import get_completion_class
 
-    comp_cls = get_completion_class(shell)
+    comp_cls = get_completion_class(Shell(shell))
     comp = comp_cls(
         cli=main,
         ctx_args={},
@@ -241,3 +262,58 @@ def completion(shell: str):
         complete_var="_FIVE_CLIS_COMPLETE",
     )
     click.echo(comp.source(), nl=False)
+
+
+# ── Self-update ─────────────────────────────────────────────────────────────
+
+
+def _current_executable_path() -> str:
+    """Resolve the absolute path of the running five-clis executable.
+
+    ``sys.argv[0]`` can be relative (``./five-clis``), and perform_update()
+    derives its temp file from this path — left relative, the replacement would
+    land next to the working directory rather than the real install location.
+    ``abspath`` rather than ``resolve`` so a symlinked install has its link
+    replaced, not the file it points at.
+    """
+    return os.path.abspath(shutil.which("five-clis") or sys.argv[0])
+
+
+@main.command()
+@click.pass_obj
+def update(settings: Settings):
+    """Download and install the latest five-clis release over this executable."""
+    click.echo(
+        click.style("🔍 Checking for a newer release...", fg="cyan"),
+        err=True,
+        color=settings.colour,
+    )
+    status, current, detail = perform_update(_current_executable_path())
+
+    if status is UpdateStatus.UNKNOWN:
+        raise click.ClickException("Could not reach GitHub to check for a new release.")
+    if status is UpdateStatus.ERROR:
+        raise click.ClickException(f"Update failed: {detail}")
+    if status is UpdateStatus.UP_TO_DATE:
+        click.echo(
+            click.style(f"✅ Already up to date, v{current}.", fg="green"),
+            err=True,
+            color=settings.colour,
+        )
+        return
+
+    click.echo(
+        click.style(f"✅ five-clis has been updated to v{detail}.", fg="green"),
+        err=True,
+        color=settings.colour,
+    )
+    # The completion scripts re-invoke the binary, so they track it for free.
+    # The man page is a static file and may sit somewhere needing privileges,
+    # so point at the installer rather than trying to rewrite it here.
+    click.echo(
+        click.style(
+            "   Re-run install.sh if you also want a refreshed man page.", fg="cyan"
+        ),
+        err=True,
+        color=settings.colour,
+    )

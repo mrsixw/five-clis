@@ -3,20 +3,39 @@ import os
 import re
 import time
 from datetime import datetime, timezone
+from enum import Enum, auto
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as pkg_version
+from pathlib import Path
 
 import requests
 
-from .fsutil import atomic_write_text
+from .fsutil import atomic_write_stream, atomic_write_text
 from .logger import logger
 from .xdg import get_cache_dir
 
 _UPDATE_CHECK_REPO = "mrsixw/five-clis"
 _PACKAGE_NAME = "fiveclis"
+_BINARY_NAME = "five-clis"
+_RELEASE_ASSET_URL = (
+    f"https://github.com/{_UPDATE_CHECK_REPO}/releases/latest/download/{_BINARY_NAME}"
+)
 
 _CACHE_FILENAME = "latest_version.json"
 _CACHE_TTL_SECONDS = 86400  # 24 hours
+
+
+class UpdateStatus(Enum):
+    """Outcome of a :func:`perform_update` attempt.
+
+    The values are deliberately meaningless — nothing should serialise or
+    compare against them, so call sites use ``is`` against the members.
+    """
+
+    UPDATED = auto()
+    UP_TO_DATE = auto()
+    UNKNOWN = auto()
+    ERROR = auto()
 
 
 def _read_version_cache() -> dict | None:
@@ -159,3 +178,34 @@ def check_for_update(show_summary: bool = False):
     except PackageNotFoundError as exc:
         logger.debug("package_not_found error=%r", str(exc))
         return None
+
+
+def perform_update(executable_path) -> tuple[UpdateStatus, str, str | None]:
+    """Download the latest five-clis release and replace executable_path in place.
+
+    Returns (status, current_version, detail):
+      - UPDATED: executable_path now holds the release named by detail.
+      - UP_TO_DATE: current_version already matches or exceeds detail (latest).
+      - UNKNOWN: the latest version could not be determined; detail is None.
+      - ERROR: the download or install failed; detail carries the error message.
+    """
+    current = pkg_version(_PACKAGE_NAME)
+    latest = get_latest_version()
+    if not latest:
+        return UpdateStatus.UNKNOWN, current, None
+    if not _is_newer(latest, current):
+        return UpdateStatus.UP_TO_DATE, current, latest
+
+    # Stream straight into atomic_write_stream: it writes to a sibling temp file
+    # and os.replace()s it into position, so an interrupted download can never
+    # leave a half-written binary where the working one used to be.
+    try:
+        resp = requests.get(_RELEASE_ASSET_URL, timeout=30, stream=True)
+        resp.raise_for_status()
+        atomic_write_stream(
+            Path(executable_path), resp.iter_content(chunk_size=65536), mode=0o755
+        )
+    except (OSError, requests.exceptions.RequestException) as exc:
+        logger.debug("perform_update_failed error=%r", str(exc))
+        return UpdateStatus.ERROR, current, str(exc)
+    return UpdateStatus.UPDATED, current, latest

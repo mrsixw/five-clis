@@ -20,7 +20,8 @@ def test_help():
     assert result.exit_code == 0
     assert "--theme" in result.output
     assert "greet" in result.output
-    assert "completion" in result.output
+    assert "completions" in result.output
+    assert "update" in result.output
     assert "config" in result.output
 
 
@@ -45,20 +46,36 @@ def test_greet_with_name(monkeypatch):
     assert "Alice" in result.output
 
 
-def test_completion_bash():
-    result = _invoke("completion", "bash")
+def test_completions_bash():
+    result = _invoke("completions", "bash")
     assert result.exit_code == 0
     assert "_FIVE_CLIS_COMPLETE" in result.output
 
 
-def test_completion_zsh():
-    result = _invoke("completion", "zsh")
+def test_completions_zsh():
+    result = _invoke("completions", "zsh")
     assert result.exit_code == 0
 
 
-def test_completion_fish():
-    result = _invoke("completion", "fish")
+def test_completions_fish():
+    result = _invoke("completions", "fish")
     assert result.exit_code == 0
+
+
+def test_completions_rejects_unknown_shell():
+    result = _invoke("completions", "powershell")
+    assert result.exit_code != 0
+
+
+def test_completions_singular_name_is_gone():
+    """The old spelling was removed outright — this is a template, not a product."""
+    result = _invoke("completion", "bash")
+    assert result.exit_code != 0
+
+
+def test_shell_enum_members_are_their_lowercase_names():
+    assert [s.value for s in cli_mod.Shell] == ["bash", "zsh", "fish"]
+    assert cli_mod.Shell.BASH == "bash"
 
 
 def test_config_init(tmp_path, monkeypatch):
@@ -163,3 +180,60 @@ def test_config_update_up_to_date_exits_0(tmp_path, monkeypatch):
     monkeypatch.setattr(cfg_mod, "get_config_paths", lambda: [cfg_file])
     result = _invoke("config", "update")
     assert result.exit_code == 0
+
+
+# ── update ──────────────────────────────────────────────────────────────────
+
+
+def _stub_update(monkeypatch, status, current="1.0.0", detail="2.0.0"):
+    monkeypatch.setattr(
+        cli_mod, "perform_update", lambda _path: (status, current, detail)
+    )
+    monkeypatch.setattr(cli_mod, "_current_executable_path", lambda: "/tmp/five-clis")
+
+
+def test_update_reports_success(monkeypatch):
+    _stub_update(monkeypatch, cli_mod.UpdateStatus.UPDATED)
+    result = _invoke("--no-colour", "update")
+    assert result.exit_code == 0
+    assert "updated to v2.0.0" in result.output
+    assert "install.sh" in result.output
+
+
+def test_update_reports_already_current(monkeypatch):
+    _stub_update(monkeypatch, cli_mod.UpdateStatus.UP_TO_DATE)
+    result = _invoke("--no-colour", "update")
+    assert result.exit_code == 0
+    assert "Already up to date, v1.0.0" in result.output
+
+
+def test_update_unreachable_github_fails_cleanly(monkeypatch):
+    _stub_update(monkeypatch, cli_mod.UpdateStatus.UNKNOWN, detail=None)
+    result = _invoke("--no-colour", "update")
+    assert result.exit_code != 0
+    assert "Could not reach GitHub" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_update_error_surfaces_detail(monkeypatch):
+    _stub_update(monkeypatch, cli_mod.UpdateStatus.ERROR, detail="Permission denied")
+    result = _invoke("--no-colour", "update")
+    assert result.exit_code != 0
+    assert "Permission denied" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_update_does_not_also_print_the_update_notice(monkeypatch):
+    """The trailing 'a new version exists' notice would be noise here."""
+    _stub_update(monkeypatch, cli_mod.UpdateStatus.UP_TO_DATE)
+    monkeypatch.setattr(
+        cli_mod, "check_for_update", lambda **_kw: "🍟 A fresh order is ready!"
+    )
+    result = _invoke("--no-colour", "update")
+    assert "fresh order" not in result.output
+
+
+def test_current_executable_path_is_absolute(monkeypatch):
+    monkeypatch.setattr(cli_mod.shutil, "which", lambda _name: None)
+    monkeypatch.setattr(cli_mod.sys, "argv", ["./five-clis"])
+    assert cli_mod._current_executable_path().startswith("/")
