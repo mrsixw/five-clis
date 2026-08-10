@@ -41,9 +41,13 @@ def atomic_write_stream(
         if mode is not None:
             os.chmod(tmp, mode)
         os.replace(tmp, path)
-    except OSError:
+    finally:
+        # finally, not except OSError: *chunks* is usually a live network
+        # stream, so the window here is long enough for a Ctrl-C, and the
+        # randomised temp name means a leak is never reclaimed by a later run.
+        # A successful os.replace leaves nothing behind, so this is a no-op on
+        # the happy path.
         tmp.unlink(missing_ok=True)
-        raise
 
 
 def atomic_write_text(path: Path, content: str, mode: int | None = None) -> None:

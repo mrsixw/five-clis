@@ -190,6 +190,17 @@ def perform_update(executable_path) -> tuple[UpdateStatus, str, str | None]:
       - ERROR: the download or install failed; detail carries the error message.
     """
     current = pkg_version(_PACKAGE_NAME)
+    executable_path = Path(executable_path)
+    if executable_path.suffix == ".py":
+        # Invoked from a source checkout (python -m <pkg>.cli), not an installed
+        # release. Writing a downloaded binary here would destroy the source.
+        return (
+            UpdateStatus.ERROR,
+            current,
+            f"{executable_path} is a source file, not an installed binary — "
+            "install a release before updating.",
+        )
+
     latest = get_latest_version()
     if not latest:
         return UpdateStatus.UNKNOWN, current, None
@@ -200,11 +211,11 @@ def perform_update(executable_path) -> tuple[UpdateStatus, str, str | None]:
     # and os.replace()s it into position, so an interrupted download can never
     # leave a half-written binary where the working one used to be.
     try:
-        resp = requests.get(_RELEASE_ASSET_URL, timeout=30, stream=True)
-        resp.raise_for_status()
-        atomic_write_stream(
-            Path(executable_path), resp.iter_content(chunk_size=65536), mode=0o755
-        )
+        with requests.get(_RELEASE_ASSET_URL, timeout=30, stream=True) as resp:
+            resp.raise_for_status()
+            atomic_write_stream(
+                executable_path, resp.iter_content(chunk_size=65536), mode=0o755
+            )
     except (OSError, requests.exceptions.RequestException) as exc:
         logger.debug("perform_update_failed error=%r", str(exc))
         return UpdateStatus.ERROR, current, str(exc)
