@@ -30,6 +30,9 @@ _ENVVAR_PREFIX = "FIVE_CLIS"
 _CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 _DEFAULT_CACHE_TTL = 300
 
+# Subcommands that must run before, and independently of, config resolution.
+_CONFIG_FREE_COMMANDS = frozenset({"completions", "update"})
+
 
 def _resolved(flag_value, cfg: dict, key: str, default):
     """Resolve an option: CLI flag beats config file beats *default*."""
@@ -116,6 +119,13 @@ def main(
     Running with no subcommand is equivalent to ``five-clis greet``.
     """
     configure_logging()
+
+    # completions and update must stay usable when the config file is broken.
+    # The shell runs the completion script on every tab-press, so a config error
+    # would spew into the user's prompt; and if a bad config could block update,
+    # there would be no way to install the release that fixes it.
+    if ctx.invoked_subcommand in _CONFIG_FREE_COMMANDS:
+        return
 
     try:
         cfg = load_config(config_path)
@@ -286,13 +296,11 @@ def _current_executable_path() -> str:
 
 
 @main.command()
-@click.pass_obj
-def update(settings: Settings):
+def update():
     """Download and install the latest five-clis release over this executable."""
     click.echo(
         click.style("🔍 Checking for a newer release...", fg="cyan"),
         err=True,
-        color=settings.colour,
     )
     status, current, detail = perform_update(_current_executable_path())
 
@@ -304,14 +312,12 @@ def update(settings: Settings):
         click.echo(
             click.style(f"✅ Already up to date, v{current}.", fg="green"),
             err=True,
-            color=settings.colour,
         )
         return
 
     click.echo(
         click.style(f"✅ five-clis has been updated to v{detail}.", fg="green"),
         err=True,
-        color=settings.colour,
     )
     # The completion scripts re-invoke the binary, so they track it for free.
     # The man page is a static file and may sit somewhere needing privileges,
@@ -321,5 +327,4 @@ def update(settings: Settings):
             "   Re-run install.sh if you also want a refreshed man page.", fg="cyan"
         ),
         err=True,
-        color=settings.colour,
     )

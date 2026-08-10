@@ -237,3 +237,32 @@ def test_current_executable_path_is_absolute(monkeypatch):
     monkeypatch.setattr(cli_mod.shutil, "which", lambda _name: None)
     monkeypatch.setattr(cli_mod.sys, "argv", ["./five-clis"])
     assert cli_mod._current_executable_path().startswith("/")
+
+
+def test_completions_survives_a_broken_config(tmp_path):
+    """The shell runs this on every tab-press; a bad config must not leak in."""
+    bad = tmp_path / "config.toml"
+    bad.write_text('cache-ttl = "not-a-duration"\n')
+    result = _invoke("--config", str(bad), "completions", "bash")
+    assert result.exit_code == 0
+    assert "_FIVE_CLIS_COMPLETE" in result.stdout
+    assert "Invalid TTL" not in result.output
+
+
+def test_update_survives_a_broken_config(tmp_path, monkeypatch):
+    """A config bad enough to break the CLI must not block updating past it."""
+    _stub_update(monkeypatch, cli_mod.UpdateStatus.UP_TO_DATE)
+    bad = tmp_path / "config.toml"
+    bad.write_text('cache-ttl = "not-a-duration"\n')
+    result = _invoke("--config", str(bad), "update")
+    assert result.exit_code == 0
+    assert "Already up to date" in result.output
+
+
+def test_config_update_still_resolves_config(tmp_path):
+    """'config update' must not be mistaken for the top-level 'update'."""
+    bad = tmp_path / "config.toml"
+    bad.write_text('cache-ttl = "not-a-duration"\n')
+    result = _invoke("--config", str(bad), "config", "update")
+    assert result.exit_code != 0
+    assert "Invalid TTL" in result.output
