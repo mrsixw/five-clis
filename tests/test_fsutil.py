@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from fiveclis import fsutil
-from fiveclis.fsutil import atomic_write_text
+from fiveclis.fsutil import atomic_write_stream, atomic_write_text
 
 
 def test_writes_new_file(tmp_path):
@@ -99,3 +99,45 @@ def test_all_file_writes_go_through_atomic_helper():
     assert (
         offenders == []
     ), f"Direct file writes found in {offenders}; use fsutil.atomic_write_text"
+
+
+# ── atomic_write_stream ─────────────────────────────────────────────────────
+
+
+def test_stream_writes_new_file(tmp_path):
+    target = tmp_path / "binary"
+    atomic_write_stream(target, [b"abc", b"def"])
+    assert target.read_bytes() == b"abcdef"
+
+
+def test_stream_overwrites_existing_file(tmp_path):
+    target = tmp_path / "binary"
+    target.write_bytes(b"old")
+    atomic_write_stream(target, [b"new"])
+    assert target.read_bytes() == b"new"
+
+
+def test_stream_applies_requested_mode(tmp_path):
+    target = tmp_path / "binary"
+    atomic_write_stream(target, [b"x"], mode=0o755)
+    assert (target.stat().st_mode & 0o777) == 0o755
+
+
+def test_stream_leaves_no_temp_file_behind(tmp_path):
+    target = tmp_path / "binary"
+    atomic_write_stream(target, [b"x"])
+    assert [p.name for p in tmp_path.iterdir()] == ["binary"]
+
+
+def test_stream_failure_leaves_original_intact(tmp_path):
+    target = tmp_path / "binary"
+    target.write_bytes(b"original")
+
+    def exploding_chunks():
+        yield b"partial"
+        raise OSError("connection reset")
+
+    with pytest.raises(OSError):
+        atomic_write_stream(target, exploding_chunks())
+    assert target.read_bytes() == b"original"
+    assert [p.name for p in tmp_path.iterdir()] == ["binary"]
