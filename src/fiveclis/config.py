@@ -35,7 +35,16 @@ _DEFAULT_CONFIG_CONTENT = """\
 # seasonal-colours = true
 
 # Which cultural calendar drives the seasonal colour scheme.
-# Choices: western, jewish, islamic, hindu, sikh, east-asian
+# Choices:
+#   western    - Christmas, Easter, Pride Month, Halloween, Lunar New Year
+#   jewish     - Hanukkah, Passover, Rosh Hashanah, Sukkot
+#   islamic    - Eid al-Fitr, Eid al-Adha
+#   hindu      - Diwali, Holi
+#   sikh       - Vaisakhi, Bandi Chhor Divas
+#   east-asian - Lunar New Year, Mid-Autumn, Songkran, Hanami
+#   rainbow    - the Pride cycle every day of the year, not just in June
+#   off        - disable seasonal colours entirely
+# Note: seasonal-colours = false is equivalent to seasonal-calendar = "off"
 # Equivalent to: --seasonal-calendar <name>
 # seasonal-calendar = "western"
 

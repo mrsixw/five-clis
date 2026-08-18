@@ -266,3 +266,22 @@ def test_config_update_still_resolves_config(tmp_path):
     result = _invoke("--config", str(bad), "config", "update")
     assert result.exit_code != 0
     assert "Invalid TTL" in result.output
+
+
+def test_seasonal_calendar_off_is_accepted():
+    # Regression: "off" was handled by apply_seasonal_colour but missing from
+    # CALENDAR_NAMES, so click.Choice rejected it before it ever got there.
+    result = _invoke("--seasonal-calendar", "off", "greet", "--name", "x")
+    assert result.exit_code == 0
+    assert "Hello, x!" in result.output
+
+
+def test_seasonal_calendar_rainbow_is_accepted():
+    result = _invoke("--seasonal-calendar", "rainbow", "greet", "--name", "x")
+    assert result.exit_code == 0
+    assert "Hello, x!" in result.output
+
+
+def test_seasonal_calendar_rejects_unknown_values():
+    result = _invoke("--seasonal-calendar", "klingon", "greet")
+    assert result.exit_code != 0
