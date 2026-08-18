@@ -103,6 +103,11 @@ def _resolved(flag_value, cfg: dict, key: str, default):
     envvar=f"{ENVVAR_PREFIX}_NO_UPDATE_CHECK",
     help="Disable the automatic update check.",
 )
+@click.option(
+    "--update-summary/--no-update-summary",
+    default=None,
+    help="Include release highlights in the update notice.",
+)
 @click.pass_context
 def main(
     ctx,
@@ -114,6 +119,7 @@ def main(
     cache_enabled,
     cache_ttl,
     no_update_check,
+    update_summary,
 ):
     """🍔 five-clis — a batteries-included Python CLI template.
 
@@ -152,6 +158,7 @@ def main(
         cache_enabled=_resolved(cache_enabled, cfg, "cache", False),
         cache_ttl=ttl,
         update_check=not (no_update_check or cfg.get("no-update-check", False)),
+        update_summary=_resolved(update_summary, cfg, "update-summary", False),
     )
 
     if ctx.invoked_subcommand is None:
@@ -162,7 +169,7 @@ def _notify_update(settings: Settings) -> None:
     """Print an update notice to stderr if a newer release is available."""
     if not settings.update_check:
         return
-    update_msg = check_for_update()
+    update_msg = check_for_update(show_summary=settings.update_summary)
     if update_msg:
         click.echo(
             click.style(update_msg, fg="cyan", bold=True),

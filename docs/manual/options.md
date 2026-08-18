@@ -130,6 +130,23 @@ Disable the automatic update check. Also honoured via `FIVE_CLIS_NO_UPDATE_CHECK
 
 Config key: `no-update-check = false`
 
+### `--update-summary` / `--no-update-summary`
+
+Append a short summary of the release highlights to the update notice — the
+first few bullet points of the GitHub release body, with headers and bare
+URLs stripped, truncated to 200 characters:
+
+```text
+🍟 A fresh order is ready! v1.0.2 → v1.0.3 — update at https://github.com/…
+  📋 - Added the doctor command - Fixed cache expiry on 32-bit systems
+```
+
+Off by default, and has no effect alongside `--no-update-check`. The body is
+read from the same 24-hour cache as the version check, so turning this on
+costs no extra network round trip.
+
+Config key: `update-summary = false`
+
 ### `--version`
 
 Show the installed version and exit.

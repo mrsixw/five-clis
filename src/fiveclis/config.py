@@ -63,6 +63,11 @@ _DEFAULT_CONFIG_CONTENT = """\
 # Disable the automatic update check.
 # Equivalent to: --no-update-check
 # no-update-check = false
+
+# Include a short summary of the release highlights in the update notice.
+# Has no effect when no-update-check is true.
+# Equivalent to: --update-summary / --no-update-summary
+# update-summary = false
 """
 
 

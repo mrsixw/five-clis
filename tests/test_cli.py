@@ -291,3 +291,63 @@ def test_seasonal_calendar_rainbow_is_accepted():
 def test_seasonal_calendar_rejects_unknown_values():
     result = _invoke("--seasonal-calendar", "klingon", "greet")
     assert result.exit_code != 0
+
+
+# ── Release summary in the update notice ───────────────────────────────────
+
+
+def _stub_update_check(monkeypatch, calls):
+    def fake(show_summary=False):
+        calls.append(show_summary)
+        notice = "🍟 A fresh order is ready!"
+        return notice + "\n  📋 - Did a thing" if show_summary else notice
+
+    monkeypatch.setattr(cli_mod, "check_for_update", fake)
+
+
+def test_update_summary_defaults_to_off(monkeypatch):
+    calls = []
+    _stub_update_check(monkeypatch, calls)
+    result = _invoke("greet", "--name", "x")
+    assert result.exit_code == 0
+    assert calls == [False]
+    assert "📋" not in result.output
+
+
+def test_update_summary_flag_shows_the_highlights(monkeypatch):
+    calls = []
+    _stub_update_check(monkeypatch, calls)
+    result = _invoke("--update-summary", "greet", "--name", "x")
+    assert result.exit_code == 0
+    assert calls == [True]
+    assert "📋 - Did a thing" in result.output
+
+
+def test_update_summary_reads_from_the_config_file(monkeypatch, tmp_path):
+    calls = []
+    _stub_update_check(monkeypatch, calls)
+    cfg = tmp_path / "config.toml"
+    cfg.write_text("update-summary = true\n")
+    result = _invoke("--config", str(cfg), "greet", "--name", "x")
+    assert result.exit_code == 0
+    assert calls == [True]
+
+
+def test_no_update_summary_flag_beats_the_config_file(monkeypatch, tmp_path):
+    calls = []
+    _stub_update_check(monkeypatch, calls)
+    cfg = tmp_path / "config.toml"
+    cfg.write_text("update-summary = true\n")
+    result = _invoke(
+        "--config", str(cfg), "--no-update-summary", "greet", "--name", "x"
+    )
+    assert result.exit_code == 0
+    assert calls == [False]
+
+
+def test_update_summary_is_skipped_when_update_check_is_off(monkeypatch):
+    calls = []
+    _stub_update_check(monkeypatch, calls)
+    result = _invoke("--no-update-check", "--update-summary", "greet", "--name", "x")
+    assert result.exit_code == 0
+    assert calls == []
