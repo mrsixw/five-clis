@@ -433,21 +433,39 @@ def is_christmas(today: datetime.date | None = None) -> bool:
     return (current.month, current.day) == CHRISTMAS
 
 
+def generate_terminal_url_anchor(url: str, url_text: str = "Link") -> str:
+    """Wrap *url_text* in an OSC 8 hyperlink pointing at *url*.
+
+    Terminals that do not understand OSC 8 render *url_text* plainly rather
+    than showing the escape codes, so this degrades quietly — but only in
+    terminals. Never emit it into output that may be piped or logged.
+    """
+    return f"\033]8;;{url}\033\\{url_text}\033]8;;\033\\"
+
+
 def render_burger_recipe(
-    recipe: dict, *, occasion: str | None = None, colour: bool | None = None
+    recipe: dict, *, occasion: str | None = None, colour: bool = True
 ) -> str:
     """Render a burger recipe banner.
 
     *occasion* is None for the ``--burger`` flag, or ``"christmas"`` for the
     once-a-year gift, which only changes the header and its colour.
+
+    With *colour* on, the title links to the recipe it came from. With it off
+    the title is plain and the URL moves into the Source row, so the credit
+    survives either way.
     """
+    title = recipe["title"]
+    if colour:
+        title = generate_terminal_url_anchor(recipe["source_url"], title)
     if occasion == "christmas":
-        header = (
-            f"🍔 🎄 Merry Christmas! Here is a Christmas burger: "
-            f"{recipe['title']} 🎁"
-        )
+        header = f"🍔 🎄 Merry Christmas! Here is a Christmas burger: {title} 🎁"
     else:
-        header = f"🍔 Secret Burger Recipe: {recipe['title']}"
+        header = f"🍔 Secret Burger Recipe: {title}"
+
+    source = (
+        recipe["source"] if colour else f"{recipe['source']} — {recipe['source_url']}"
+    )
 
     lines = [
         click.style(
@@ -460,13 +478,13 @@ def render_burger_recipe(
         click.style(f"   Toppings: {recipe['toppings']}", fg="white"),
         click.style(f"   Cook:     {recipe['cook']}", fg="white"),
         click.style(f"   Tip:      💡 {recipe['tip']}", fg="yellow"),
-        click.style(f"   Source:   {recipe['source']}", fg="bright_black"),
+        click.style(f"   Source:   {source}", fg="bright_black"),
     ]
     return "\n".join(lines)
 
 
 def render_cake_recipe(
-    recipe: dict, *, occasion: str | None = None, colour: bool | None = None
+    recipe: dict, *, occasion: str | None = None, colour: bool = True
 ) -> str:
     """Render a cake recipe banner.
 

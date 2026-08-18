@@ -60,6 +60,9 @@ def test_burger_recipes():
     assert len(titles) == len(set(titles))
     for recipe in constants.BURGER_RECIPES:
         assert recipe["source"], f"{recipe['title']} must credit its source"
+        assert recipe["source_url"].startswith(
+            "https://"
+        ), f"{recipe['title']} must link to its source"
 
 
 def test_cake_recipes():

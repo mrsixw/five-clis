@@ -334,6 +334,9 @@ BURGER_RECIPES = [
             "out the juices instead of building crust."
         ),
         "source": "J. Kenji López-Alt, Serious Eats",
+        "source_url": (
+            "https://www.seriouseats.com/ultra-smashed-cheeseburger-recipe-food-lab"
+        ),
     },
     {
         "title": "Kenji's Fat Diner-Style Burger",
@@ -357,6 +360,9 @@ BURGER_RECIPES = [
             "burger, and pre-ground chuck flattens it into an ordinary one."
         ),
         "source": "J. Kenji López-Alt, Serious Eats",
+        "source_url": (
+            "https://food52.com/recipes/81708-j-kenji-lopez-alt-s-fat-diner-style-burgers-a-la-the-village-vanguard-s"
+        ),
     },
     {
         "title": "Buttermilk-Brined Fried Chicken Sandwich",
@@ -382,6 +388,9 @@ BURGER_RECIPES = [
             "the chicken in the oil."
         ),
         "source": "The Kitchn",
+        "source_url": (
+            "https://www.thekitchn.com/fried-chicken-sandwich-recipe-23309973"
+        ),
     },
     {
         "title": "Really Awesome Black Bean Burgers",
@@ -405,6 +414,7 @@ BURGER_RECIPES = [
             "water, not the beans, that makes most veggie burgers mushy."
         ),
         "source": "J. Kenji López-Alt, Serious Eats",
+        "source_url": ("https://www.seriouseats.com/the-best-black-bean-burger-recipe"),
     },
 ]
 

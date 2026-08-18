@@ -13,6 +13,7 @@ from fiveclis.ui import (
     THEME_NAMES,
     THEMES,
     apply_seasonal_colour,
+    generate_terminal_url_anchor,
     get_random_burger_recipe,
     get_random_cake_recipe,
     get_theme,
@@ -161,10 +162,18 @@ def test_off_calendar_returns_text_untouched():
 
 
 def test_recipe_collections_share_a_shape():
+    burger_fields = {
+        "title",
+        "style",
+        "patty",
+        "toppings",
+        "cook",
+        "tip",
+        "source",
+        "source_url",
+    }
     for recipe in BURGER_RECIPES:
-        assert {"title", "style", "patty", "toppings", "cook", "tip", "source"} <= set(
-            recipe
-        )
+        assert burger_fields <= set(recipe)
     for recipe in CAKE_RECIPES:
         assert {"title", "style", "batter", "frosting", "bake", "tip"} <= set(recipe)
 
@@ -195,6 +204,29 @@ def test_render_burger_recipe_credits_its_source():
     assert BURGER_RECIPES[0]["title"] in rendered
     assert BURGER_RECIPES[0]["source"] in rendered
     assert "Secret Burger Recipe" in rendered
+
+
+def test_render_burger_recipe_links_the_title():
+    recipe = BURGER_RECIPES[0]
+    rendered = render_burger_recipe(recipe)
+    anchor = generate_terminal_url_anchor(recipe["source_url"], recipe["title"])
+    assert anchor in rendered
+
+
+def test_render_burger_recipe_without_colour_shows_the_url_instead():
+    # OSC 8 has no business in output that may be piped or logged, so the
+    # credit falls back to a plain URL in the Source row rather than vanishing.
+    recipe = BURGER_RECIPES[0]
+    rendered = render_burger_recipe(recipe, colour=False)
+    assert "\033]8;;" not in rendered
+    assert recipe["source_url"] in rendered
+
+
+def test_terminal_url_anchor_wraps_the_text_not_the_url():
+    anchor = generate_terminal_url_anchor("https://example.com", "Click me")
+    assert anchor.startswith("\033]8;;https://example.com\033\\")
+    assert "Click me" in anchor
+    assert anchor.endswith("\033]8;;\033\\")
 
 
 def test_render_burger_recipe_christmas_header():
