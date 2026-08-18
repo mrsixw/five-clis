@@ -6,6 +6,7 @@ Business modules can accept a ``Settings`` instead of a pile of loose
 parameters.
 """
 
+import time
 from dataclasses import dataclass, field
 
 from .ui import Theme, apply_seasonal_colour
@@ -28,6 +29,10 @@ class Settings:
     update_summary: bool = False
     burger: bool = False
     cake: bool = False
+    debug_summary: bool = False
+    #: When this invocation started, for the debug summary's elapsed row.
+    #: monotonic, so a clock adjustment mid-run cannot produce a negative time.
+    started_at: float = field(default_factory=time.monotonic)
 
     def paint(self, text: str, *, index: int = 0, role: str = "primary") -> str:
         """Colour *text* per the resolved colour/seasonal/theme settings.

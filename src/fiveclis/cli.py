@@ -15,6 +15,7 @@ import os
 import random
 import shutil
 import sys
+import time
 from enum import StrEnum, auto
 
 import click
@@ -120,6 +121,12 @@ def _resolved(flag_value, cfg: dict, key: str, default):
     default=None,
     help="Include release highlights in the update notice.",
 )
+# ── Diagnostics ─────────────────────────────────────────────────────────────
+@click.option(
+    "--debug-summary/--no-debug-summary",
+    default=None,
+    help="Print a run summary (timing, work done) to stderr when finished.",
+)
 # ── Easter eggs ─────────────────────────────────────────────────────────────
 @click.option(
     "--burger",
@@ -147,6 +154,7 @@ def main(
     cache_ttl,
     no_update_check,
     update_summary,
+    debug_summary,
     burger,
     cake,
 ):
@@ -158,6 +166,8 @@ def main(
 
     Running with no subcommand is equivalent to ``five-clis greet``.
     """
+    # Before anything else, so the elapsed row covers config resolution too.
+    started_at = time.monotonic()
     configure_logging()
 
     # completions and update must stay usable when the config file is broken.
@@ -188,8 +198,10 @@ def main(
         cache_ttl=ttl,
         update_check=not (no_update_check or cfg.get("no-update-check", False)),
         update_summary=_resolved(update_summary, cfg, "update-summary", False),
+        debug_summary=_resolved(debug_summary, cfg, "debug-summary", False),
         burger=burger,
         cake=cake,
+        started_at=started_at,
     )
 
     if ctx.invoked_subcommand is None:
@@ -248,7 +260,38 @@ def _serve_easter_eggs(settings: Settings) -> None:
         )
 
 
-def _finish_run(settings: Settings) -> None:
+def _print_debug_summary(
+    settings: Settings, item_count: int, extra: dict[str, str] | None = None
+) -> None:
+    """Print a run summary to stderr: timing, work done, and app-specific rows.
+
+    *extra* is where a scaffolded CLI adds its own rows — request counts, rate
+    limit headroom, bytes transferred. breakfast's equivalent is spelled
+    ``--api-stats`` and fills this slot with REST and GraphQL counters; here
+    the flag is named for what it prints, since a template has no API to count.
+    """
+    elapsed = time.monotonic() - settings.started_at
+    rows = {
+        "Total elapsed": f"{elapsed:.2f}s",
+        "Items processed": str(item_count),
+        "Cache": (
+            f"enabled, ttl {settings.cache_ttl}s"
+            if settings.cache_enabled
+            else "disabled"
+        ),
+        **(extra or {}),
+    }
+    width = max(len(label) for label in rows)
+    lines = [click.style("🐛 Debug summary", fg="cyan", bold=True)]
+    lines += [f"  {label + ':':<{width + 1}} {value}" for label, value in rows.items()]
+    click.echo("\n".join(lines), err=True, color=settings.colour)
+
+
+def _finish_run(
+    settings: Settings,
+    item_count: int = 0,
+    extra: dict[str, str] | None = None,
+) -> None:
     """Run the end-of-invocation chores every command shares.
 
     Call this last from any command that produces user-facing output, so the
@@ -256,6 +299,8 @@ def _finish_run(settings: Settings) -> None:
     """
     _notify_update(settings)
     _serve_easter_eggs(settings)
+    if settings.debug_summary:
+        _print_debug_summary(settings, item_count, extra)
 
 
 # ── Greeting (demo command — replace with your own) ─────────────────────────
@@ -293,7 +338,9 @@ def greet(settings: Settings, name: str | None):
         for i, item in enumerate(items):
             click.echo(settings.theme.apply_cycle(f"  • {item}", i))
 
-    _finish_run(settings)
+    # item_count and the extra rows are the demo's stand-in for whatever your
+    # command actually did — swap them for real counters.
+    _finish_run(settings, item_count=1, extra={"Greeted": name})
 
 
 # ── Config management ───────────────────────────────────────────────────────
