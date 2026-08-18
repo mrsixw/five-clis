@@ -7,10 +7,13 @@ Two complementary systems:
 """
 
 import datetime
+import json
 import math
+import random
 from dataclasses import dataclass, field
 from datetime import date as _real_date
 from datetime import timedelta as _real_timedelta
+from pathlib import Path
 
 import click
 
@@ -24,10 +27,18 @@ from .constants import (
     _PASSOVER_START,
     _ROSH_HASHANAH,
     _SUKKOT_START,
+    BIRTHDAY,
+    BIRTHDAY_NAME,
+    BURGER_RECIPES,
+    CAKE_RECIPES,
+    CHRISTMAS,
     HOLI_RAINBOW,
     PRIDE_RAINBOW,
     SEASONAL_PALETTES,
 )
+from .fsutil import atomic_write_text
+from .logger import logger
+from .xdg import get_state_dir
 
 _RESET = "\033[0m"
 
@@ -387,3 +398,139 @@ def colour_grade_number(num: int | float) -> str:
 def echo_err(msg: str, colour: bool = True, fg: str = "yellow") -> None:
     """Print *msg* to stderr with optional click styling."""
     click.echo(click.style(msg, fg=fg), err=True, color=colour)
+
+
+# ---------------------------------------------------------------------------
+# Easter eggs
+# ---------------------------------------------------------------------------
+
+
+def get_random_burger_recipe() -> dict:
+    """Return a randomly chosen burger recipe from the curated collection."""
+    return random.choice(BURGER_RECIPES)
+
+
+def get_random_cake_recipe() -> dict:
+    """Return a randomly chosen cake recipe from the curated collection."""
+    return random.choice(CAKE_RECIPES)
+
+
+def is_birthday(today: datetime.date | None = None) -> bool:
+    """Return True if today is the birthday configured in constants.BIRTHDAY.
+
+    Always False when ``BIRTHDAY`` is None, which is how a scaffolded CLI
+    switches the surprise off without deleting any of this.
+    """
+    if BIRTHDAY is None:
+        return False
+    current = today or datetime.date.today()
+    return (current.month, current.day) == BIRTHDAY
+
+
+def is_christmas(today: datetime.date | None = None) -> bool:
+    """Return True if today is Christmas Day."""
+    current = today or datetime.date.today()
+    return (current.month, current.day) == CHRISTMAS
+
+
+def render_burger_recipe(
+    recipe: dict, *, occasion: str | None = None, colour: bool | None = None
+) -> str:
+    """Render a burger recipe banner.
+
+    *occasion* is None for the ``--burger`` flag, or ``"christmas"`` for the
+    once-a-year gift, which only changes the header and its colour.
+    """
+    if occasion == "christmas":
+        header = (
+            f"🍔 🎄 Merry Christmas! Here is a Christmas burger: "
+            f"{recipe['title']} 🎁"
+        )
+    else:
+        header = f"🍔 Secret Burger Recipe: {recipe['title']}"
+
+    lines = [
+        click.style(
+            header,
+            fg="bright_yellow" if occasion else "bright_magenta",
+            bold=True,
+        ),
+        click.style(f"   Style:    {recipe['style']}", fg="cyan"),
+        click.style(f"   Patty:    {recipe['patty']}", fg="white"),
+        click.style(f"   Toppings: {recipe['toppings']}", fg="white"),
+        click.style(f"   Cook:     {recipe['cook']}", fg="white"),
+        click.style(f"   Tip:      💡 {recipe['tip']}", fg="yellow"),
+        click.style(f"   Source:   {recipe['source']}", fg="bright_black"),
+    ]
+    return "\n".join(lines)
+
+
+def render_cake_recipe(
+    recipe: dict, *, occasion: str | None = None, colour: bool | None = None
+) -> str:
+    """Render a cake recipe banner.
+
+    *occasion* is None for the ``--cake`` flag, or ``"birthday"`` for the
+    once-a-year gift.
+    """
+    if occasion == "birthday":
+        header = (
+            f"🎂 It's {BIRTHDAY_NAME}'s birthday, "
+            f"here is a gift: {recipe['title']} 🎁"
+        )
+    else:
+        header = f"🎂 Secret Cake Recipe: {recipe['title']}"
+
+    lines = [
+        click.style(
+            header,
+            fg="bright_yellow" if occasion else "bright_cyan",
+            bold=True,
+        ),
+        click.style(f"   Style:    {recipe['style']}", fg="yellow"),
+        click.style(f"   Batter:   {recipe['batter']}", fg="white"),
+        click.style(f"   Frosting: {recipe['frosting']}", fg="white"),
+        click.style(f"   Bake:     {recipe['bake']}", fg="white"),
+        click.style(f"   Tip:      💡 {recipe['tip']}", fg="bright_magenta"),
+    ]
+    return "\n".join(lines)
+
+
+def _gift_state_file(event: str, state_dir: Path | None = None) -> Path:
+    return (state_dir or get_state_dir()) / f"{event}_gift.json"
+
+
+def has_shown_holiday_gift(
+    event: str, today: datetime.date | None = None, state_dir: Path | None = None
+) -> bool:
+    """Return True if *event*'s gift has already been shown this year."""
+    current = today or datetime.date.today()
+    state_file = _gift_state_file(event, state_dir)
+    try:
+        if not state_file.exists():
+            return False
+        data = json.loads(state_file.read_text())
+        return data.get("year") == current.year
+    except (OSError, json.JSONDecodeError, ValueError, TypeError) as exc:
+        logger.debug("holiday_gift_state_read_error event=%r error=%r", event, str(exc))
+        # Unreadable state means we cannot prove it was shown. Showing a gift
+        # twice is a far better failure than swallowing it for a whole year.
+        return False
+
+
+def mark_holiday_gift_shown(
+    event: str, today: datetime.date | None = None, state_dir: Path | None = None
+) -> None:
+    """Record that *event*'s gift was shown this year."""
+    current = today or datetime.date.today()
+    state_file = _gift_state_file(event, state_dir)
+    try:
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_text(
+            state_file,
+            json.dumps({"year": current.year, "date": current.isoformat()}),
+        )
+    except OSError as exc:
+        logger.debug(
+            "holiday_gift_state_write_error event=%r error=%r", event, str(exc)
+        )

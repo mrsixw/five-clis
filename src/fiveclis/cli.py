@@ -30,7 +30,19 @@ from .constants import (
 )
 from .logger import configure as configure_logging
 from .settings import Settings
-from .ui import CALENDAR_NAMES, THEME_NAMES, get_theme
+from .ui import (
+    CALENDAR_NAMES,
+    THEME_NAMES,
+    get_random_burger_recipe,
+    get_random_cake_recipe,
+    get_theme,
+    has_shown_holiday_gift,
+    is_birthday,
+    is_christmas,
+    mark_holiday_gift_shown,
+    render_burger_recipe,
+    render_cake_recipe,
+)
 from .updater import UpdateStatus, check_for_update, perform_update
 
 _CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
@@ -108,6 +120,21 @@ def _resolved(flag_value, cfg: dict, key: str, default):
     default=None,
     help="Include release highlights in the update notice.",
 )
+# ── Easter eggs ─────────────────────────────────────────────────────────────
+@click.option(
+    "--burger",
+    is_flag=True,
+    default=False,
+    hidden=True,
+    help="Secret burger recipe easter egg.",
+)
+@click.option(
+    "--cake",
+    is_flag=True,
+    default=False,
+    hidden=True,
+    help="Secret cake recipe easter egg.",
+)
 @click.pass_context
 def main(
     ctx,
@@ -120,6 +147,8 @@ def main(
     cache_ttl,
     no_update_check,
     update_summary,
+    burger,
+    cake,
 ):
     """🍔 five-clis — a batteries-included Python CLI template.
 
@@ -159,6 +188,8 @@ def main(
         cache_ttl=ttl,
         update_check=not (no_update_check or cfg.get("no-update-check", False)),
         update_summary=_resolved(update_summary, cfg, "update-summary", False),
+        burger=burger,
+        cake=cake,
     )
 
     if ctx.invoked_subcommand is None:
@@ -176,6 +207,55 @@ def _notify_update(settings: Settings) -> None:
             err=True,
             color=settings.colour,
         )
+
+
+def _serve_easter_eggs(settings: Settings) -> None:
+    """Print the recipe easter eggs, if today or the flags have earned one.
+
+    The once-a-year gifts are gated on colour: they are pure decoration, so a
+    user who asked for plain output should not have them appear unbidden.
+    The explicit --burger/--cake flags are not gated — the user asked.
+    All of it goes to stderr, so a piped stdout is never polluted.
+    """
+    if settings.colour and is_birthday() and not has_shown_holiday_gift("birthday"):
+        recipe = get_random_cake_recipe()
+        click.echo(
+            render_cake_recipe(recipe, occasion="birthday", colour=settings.colour),
+            err=True,
+            color=settings.colour,
+        )
+        mark_holiday_gift_shown("birthday")
+    elif settings.cake:
+        click.echo(
+            render_cake_recipe(get_random_cake_recipe(), colour=settings.colour),
+            err=True,
+            color=settings.colour,
+        )
+
+    if settings.colour and is_christmas() and not has_shown_holiday_gift("christmas"):
+        recipe = get_random_burger_recipe()
+        click.echo(
+            render_burger_recipe(recipe, occasion="christmas", colour=settings.colour),
+            err=True,
+            color=settings.colour,
+        )
+        mark_holiday_gift_shown("christmas")
+    elif settings.burger:
+        click.echo(
+            render_burger_recipe(get_random_burger_recipe(), colour=settings.colour),
+            err=True,
+            color=settings.colour,
+        )
+
+
+def _finish_run(settings: Settings) -> None:
+    """Run the end-of-invocation chores every command shares.
+
+    Call this last from any command that produces user-facing output, so the
+    notices land after the command's own output rather than interleaved.
+    """
+    _notify_update(settings)
+    _serve_easter_eggs(settings)
 
 
 # ── Greeting (demo command — replace with your own) ─────────────────────────
@@ -213,7 +293,7 @@ def greet(settings: Settings, name: str | None):
         for i, item in enumerate(items):
             click.echo(settings.theme.apply_cycle(f"  • {item}", i))
 
-    _notify_update(settings)
+    _finish_run(settings)
 
 
 # ── Config management ───────────────────────────────────────────────────────

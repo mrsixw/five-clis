@@ -26,6 +26,8 @@ class Settings:
     cache_ttl: int = 300
     update_check: bool = True
     update_summary: bool = False
+    burger: bool = False
+    cake: bool = False
 
     def paint(self, text: str, *, index: int = 0, role: str = "primary") -> str:
         """Colour *text* per the resolved colour/seasonal/theme settings.

@@ -52,3 +52,24 @@ def test_holiday_table_entries_are_valid_dates():
     for table in (constants._DIWALI, constants._HOLI, constants._ROSH_HASHANAH):
         for year, (month, day) in table.items():
             datetime.date(year, month, day)  # raises ValueError if bogus
+
+
+def test_burger_recipes():
+    assert len(constants.BURGER_RECIPES) >= 4
+    titles = [r["title"] for r in constants.BURGER_RECIPES]
+    assert len(titles) == len(set(titles))
+    for recipe in constants.BURGER_RECIPES:
+        assert recipe["source"], f"{recipe['title']} must credit its source"
+
+
+def test_cake_recipes():
+    assert len(constants.CAKE_RECIPES) >= 3
+    titles = [r["title"] for r in constants.CAKE_RECIPES]
+    assert len(titles) == len(set(titles))
+
+
+def test_easter_egg_dates():
+    # BIRTHDAY is intentionally overridable to None by a scaffolded CLI.
+    assert constants.BIRTHDAY is None or len(constants.BIRTHDAY) == 2
+    assert constants.CHRISTMAS == (12, 25)
+    assert constants.BIRTHDAY_NAME
