@@ -3,11 +3,10 @@ from datetime import datetime, timezone
 
 import click
 
+from .constants import TTL_SUFFIX_MAP
 from .fsutil import atomic_write_text
 from .logger import logger
 from .xdg import get_cache_dir
-
-_SUFFIX_MAP = {"s": 1, "m": 60, "h": 3600}
 
 
 def parse_ttl(value: str | int) -> int:
@@ -28,7 +27,7 @@ def parse_ttl(value: str | int) -> int:
     if not s:
         raise ValueError("TTL must not be empty")
 
-    if s[-1] in _SUFFIX_MAP:
+    if s[-1] in TTL_SUFFIX_MAP:
         suffix = s[-1]
         try:
             n = int(s[:-1])
@@ -36,7 +35,7 @@ def parse_ttl(value: str | int) -> int:
             raise ValueError(f"Invalid TTL: {value!r}")
         if n <= 0:
             raise ValueError(f"TTL must be positive, got {value!r}")
-        return n * _SUFFIX_MAP[suffix]
+        return n * TTL_SUFFIX_MAP[suffix]
 
     try:
         n = int(s)

@@ -10,19 +10,16 @@ from pathlib import Path
 
 import requests
 
+from .constants import (
+    APP_NAME,
+    RELEASE_ASSET_URL,
+    UPDATE_CHECK_REPO,
+    VERSION_CACHE_FILENAME,
+    VERSION_CACHE_TTL_SECONDS,
+)
 from .fsutil import atomic_write_stream, atomic_write_text
 from .logger import logger
 from .xdg import get_cache_dir
-
-_UPDATE_CHECK_REPO = "mrsixw/five-clis"
-_PACKAGE_NAME = "fiveclis"
-_BINARY_NAME = "five-clis"
-_RELEASE_ASSET_URL = (
-    f"https://github.com/{_UPDATE_CHECK_REPO}/releases/latest/download/{_BINARY_NAME}"
-)
-
-_CACHE_FILENAME = "latest_version.json"
-_CACHE_TTL_SECONDS = 86400  # 24 hours
 
 
 class UpdateStatus(Enum):
@@ -40,14 +37,14 @@ class UpdateStatus(Enum):
 
 def _read_version_cache() -> dict | None:
     """Return the whole cached update-check record if fresh, else None."""
-    cache_file = get_cache_dir() / _CACHE_FILENAME
+    cache_file = get_cache_dir() / VERSION_CACHE_FILENAME
     try:
         if not cache_file.exists():
             return None
         data = json.loads(cache_file.read_text())
         cached_at = datetime.fromisoformat(data["checked_at"])
         age = (datetime.now(timezone.utc) - cached_at).total_seconds()
-        if age > _CACHE_TTL_SECONDS:
+        if age > VERSION_CACHE_TTL_SECONDS:
             return None
         return data
     except (OSError, json.JSONDecodeError, KeyError, ValueError, TypeError) as exc:
@@ -65,7 +62,7 @@ def _write_version_cache(latest_version, release_body=None):
         }
         if release_body is not None:
             payload["release_body"] = release_body
-        atomic_write_text(cache_dir / _CACHE_FILENAME, json.dumps(payload))
+        atomic_write_text(cache_dir / VERSION_CACHE_FILENAME, json.dumps(payload))
     except OSError as exc:
         logger.debug("version_cache_write_error error=%r", str(exc))
 
@@ -81,7 +78,7 @@ def get_latest_version():
             headers["Authorization"] = f"token {token}"
         t0 = time.monotonic()
         resp = requests.get(
-            f"https://api.github.com/repos/{_UPDATE_CHECK_REPO}/releases/latest",
+            f"https://api.github.com/repos/{UPDATE_CHECK_REPO}/releases/latest",
             headers=headers,
             timeout=5,
         )
@@ -156,7 +153,7 @@ def get_release_summary(body: str, max_chars: int = 200) -> str:
 
 def check_for_update(show_summary: bool = False):
     try:
-        current = pkg_version(_PACKAGE_NAME)
+        current = pkg_version(APP_NAME)
         latest = get_latest_version()
         if not latest:
             return None
@@ -164,7 +161,7 @@ def check_for_update(show_summary: bool = False):
             msg = (
                 f"🍟 A fresh order is ready! "
                 f"v{current} → v{latest} "
-                f"— update at https://github.com/{_UPDATE_CHECK_REPO}/releases/latest"
+                f"— update at https://github.com/{UPDATE_CHECK_REPO}/releases/latest"
             )
             if show_summary:
                 cached = _read_version_cache()
@@ -189,7 +186,7 @@ def perform_update(executable_path) -> tuple[UpdateStatus, str, str | None]:
       - UNKNOWN: the latest version could not be determined; detail is None.
       - ERROR: the download or install failed; detail carries the error message.
     """
-    current = pkg_version(_PACKAGE_NAME)
+    current = pkg_version(APP_NAME)
     executable_path = Path(executable_path)
     if executable_path.suffix == ".py":
         # Invoked from a source checkout (python -m <pkg>.cli), not an installed
@@ -211,7 +208,7 @@ def perform_update(executable_path) -> tuple[UpdateStatus, str, str | None]:
     # and os.replace()s it into position, so an interrupted download can never
     # leave a half-written binary where the working one used to be.
     try:
-        with requests.get(_RELEASE_ASSET_URL, timeout=30, stream=True) as resp:
+        with requests.get(RELEASE_ASSET_URL, timeout=30, stream=True) as resp:
             resp.raise_for_status()
             atomic_write_stream(
                 executable_path, resp.iter_content(chunk_size=65536), mode=0o755

@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-_APP_NAME = "fiveclis"
+from .constants import APP_NAME
 
 
 def _xdg_override(env_var: str) -> Path | None:
@@ -20,16 +20,16 @@ def get_cache_dir() -> Path:
     """XDG cache directory: $XDG_CACHE_HOME/<app> or ~/.cache/<app>."""
     override = _xdg_override("XDG_CACHE_HOME")
     if override is not None:
-        return override / _APP_NAME
-    return Path.home() / ".cache" / _APP_NAME
+        return override / APP_NAME
+    return Path.home() / ".cache" / APP_NAME
 
 
 def get_config_dir() -> Path:
     """XDG config directory: $XDG_CONFIG_HOME/<app> or ~/.config/<app>."""
     override = _xdg_override("XDG_CONFIG_HOME")
     if override is not None:
-        return override / _APP_NAME
-    return Path.home() / ".config" / _APP_NAME
+        return override / APP_NAME
+    return Path.home() / ".config" / APP_NAME
 
 
 def get_config_paths() -> list[Path]:
@@ -41,9 +41,9 @@ def get_config_paths() -> list[Path]:
       3. ~/.fiveclis.toml               (legacy home directory)
     """
     return [
-        Path.cwd() / f".{_APP_NAME}.toml",
+        Path.cwd() / f".{APP_NAME}.toml",
         get_config_dir() / "config.toml",
-        Path.home() / f".{_APP_NAME}.toml",
+        Path.home() / f".{APP_NAME}.toml",
     ]
 
 
@@ -51,5 +51,5 @@ def get_state_dir() -> Path:
     """XDG state directory: $XDG_STATE_HOME/<app> or ~/.local/state/<app>."""
     override = _xdg_override("XDG_STATE_HOME")
     if override is not None:
-        return override / _APP_NAME
-    return Path.home() / ".local" / "state" / _APP_NAME
+        return override / APP_NAME
+    return Path.home() / ".local" / "state" / APP_NAME
