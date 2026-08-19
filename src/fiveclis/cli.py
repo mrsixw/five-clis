@@ -21,14 +21,19 @@ import click
 
 from .cache import parse_ttl
 from .config import load_config, show_config, update_config, write_default_config
+from .constants import (
+    APP_ITEMS,
+    APP_NAME,
+    BINARY_NAME,
+    DEFAULT_CACHE_TTL,
+    ENVVAR_PREFIX,
+)
 from .logger import configure as configure_logging
 from .settings import Settings
-from .ui import APP_ITEMS, CALENDAR_NAMES, THEME_NAMES, get_theme
+from .ui import CALENDAR_NAMES, THEME_NAMES, get_theme
 from .updater import UpdateStatus, check_for_update, perform_update
 
-_ENVVAR_PREFIX = "FIVE_CLIS"
 _CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
-_DEFAULT_CACHE_TTL = 300
 
 # Subcommands that must run before, and independently of, config resolution.
 _CONFIG_FREE_COMMANDS = frozenset({"completions", "update"})
@@ -42,7 +47,7 @@ def _resolved(flag_value, cfg: dict, key: str, default):
 
 
 @click.group(context_settings=_CONTEXT_SETTINGS, invoke_without_command=True)
-@click.version_option(package_name="fiveclis")
+@click.version_option(package_name=APP_NAME)
 # ── Config ─────────────────────────────────────────────────────────────────
 @click.option(
     "--config",
@@ -74,7 +79,7 @@ def _resolved(flag_value, cfg: dict, key: str, default):
     "no_colour",
     is_flag=True,
     default=False,
-    envvar=f"{_ENVVAR_PREFIX}_NO_COLOUR",
+    envvar=f"{ENVVAR_PREFIX}_NO_COLOUR",
     help="Disable all ANSI colour output.",
 )
 # ── Caching ─────────────────────────────────────────────────────────────────
@@ -95,7 +100,7 @@ def _resolved(flag_value, cfg: dict, key: str, default):
     "--no-update-check",
     is_flag=True,
     default=False,
-    envvar=f"{_ENVVAR_PREFIX}_NO_UPDATE_CHECK",
+    envvar=f"{ENVVAR_PREFIX}_NO_UPDATE_CHECK",
     help="Disable the automatic update check.",
 )
 @click.pass_context
@@ -129,7 +134,7 @@ def main(
 
     try:
         cfg = load_config(config_path)
-        ttl = parse_ttl(_resolved(cache_ttl, cfg, "cache-ttl", _DEFAULT_CACHE_TTL))
+        ttl = parse_ttl(_resolved(cache_ttl, cfg, "cache-ttl", DEFAULT_CACHE_TTL))
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
 
@@ -268,8 +273,8 @@ def completions(shell: str):
     comp = comp_cls(
         cli=main,
         ctx_args={},
-        prog_name="five-clis",
-        complete_var="_FIVE_CLIS_COMPLETE",
+        prog_name=BINARY_NAME,
+        complete_var=f"_{ENVVAR_PREFIX}_COMPLETE",
     )
     click.echo(comp.source(), nl=False)
 
@@ -292,7 +297,7 @@ def _current_executable_path() -> str:
     invoked = sys.argv[0]
     if os.sep in invoked and os.path.isfile(invoked):
         return os.path.abspath(invoked)
-    return os.path.abspath(shutil.which("five-clis") or invoked)
+    return os.path.abspath(shutil.which(BINARY_NAME) or invoked)
 
 
 @main.command()

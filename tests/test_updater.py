@@ -70,7 +70,7 @@ def test_get_latest_version_expired_cache_fetches_api(tmp_path, monkeypatch):
         frozen.tick(timedelta(days=2))
         with req_mock.Mocker() as m:
             m.get(
-                f"https://api.github.com/repos/{upd._UPDATE_CHECK_REPO}"
+                f"https://api.github.com/repos/{upd.UPDATE_CHECK_REPO}"
                 "/releases/latest",
                 json={"tag_name": "v2.0.0", "body": None},
             )
@@ -99,7 +99,7 @@ def _pin_versions(monkeypatch, current, latest):
 def test_perform_update_replaces_the_binary(installed_exe, monkeypatch):
     _pin_versions(monkeypatch, current="1.0.0", latest="2.0.0")
     with req_mock.Mocker() as m:
-        m.get(upd._RELEASE_ASSET_URL, content=b"new binary")
+        m.get(upd.RELEASE_ASSET_URL, content=b"new binary")
         status, current, detail = upd.perform_update(installed_exe)
     assert status is UpdateStatus.UPDATED
     assert (current, detail) == ("1.0.0", "2.0.0")
@@ -110,7 +110,7 @@ def test_perform_update_replaces_the_binary(installed_exe, monkeypatch):
 def test_perform_update_leaves_no_temp_file_behind(installed_exe, monkeypatch):
     _pin_versions(monkeypatch, current="1.0.0", latest="2.0.0")
     with req_mock.Mocker() as m:
-        m.get(upd._RELEASE_ASSET_URL, content=b"new binary")
+        m.get(upd.RELEASE_ASSET_URL, content=b"new binary")
         upd.perform_update(installed_exe)
     assert [f.name for f in installed_exe.parent.iterdir()] == ["five-clis"]
 
@@ -138,7 +138,7 @@ def test_perform_update_download_failure_leaves_binary_untouched(
 ):
     _pin_versions(monkeypatch, current="1.0.0", latest="2.0.0")
     with req_mock.Mocker() as m:
-        m.get(upd._RELEASE_ASSET_URL, exc=requests.exceptions.ConnectTimeout("boom"))
+        m.get(upd.RELEASE_ASSET_URL, exc=requests.exceptions.ConnectTimeout("boom"))
         status, _current, detail = upd.perform_update(installed_exe)
     assert status is UpdateStatus.ERROR
     assert "boom" in detail
@@ -149,7 +149,7 @@ def test_perform_update_download_failure_leaves_binary_untouched(
 def test_perform_update_http_error_leaves_binary_untouched(installed_exe, monkeypatch):
     _pin_versions(monkeypatch, current="1.0.0", latest="2.0.0")
     with req_mock.Mocker() as m:
-        m.get(upd._RELEASE_ASSET_URL, status_code=404)
+        m.get(upd.RELEASE_ASSET_URL, status_code=404)
         status, _current, _detail = upd.perform_update(installed_exe)
     assert status is UpdateStatus.ERROR
     assert installed_exe.read_bytes() == b"old binary"
@@ -161,7 +161,7 @@ def test_perform_update_permission_denied_reports_detail(installed_exe, monkeypa
     installed_exe.parent.chmod(0o555)
     try:
         with req_mock.Mocker() as m:
-            m.get(upd._RELEASE_ASSET_URL, content=b"new binary")
+            m.get(upd.RELEASE_ASSET_URL, content=b"new binary")
             status, _current, detail = upd.perform_update(installed_exe)
         assert status is UpdateStatus.ERROR
         assert "Permission denied" in detail
@@ -193,7 +193,7 @@ def test_perform_update_cleans_up_after_a_keyboard_interrupt(
             raise KeyboardInterrupt
 
     with req_mock.Mocker() as m:
-        m.get(upd._RELEASE_ASSET_URL, content=b"ignored")
+        m.get(upd.RELEASE_ASSET_URL, content=b"ignored")
         # The 3-arg form, not the dotted-string form: breakfast wraps
         # monkeypatch.setattr in an autouse fixture that only accepts it.
         monkeypatch.setattr(

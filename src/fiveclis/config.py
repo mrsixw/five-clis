@@ -12,6 +12,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
+from .constants import APP_NAME
 from .fsutil import atomic_write_text
 from .xdg import get_config_dir, get_config_paths
 
@@ -205,7 +206,7 @@ def update_config(config_path: str | None = None) -> bool:
     click.echo(f"💾 Backup saved to {backup_path}", err=True)
 
     try:
-        _version = pkg_version("fiveclis")
+        _version = pkg_version(APP_NAME)
     except PackageNotFoundError:
         _version = "unknown"
 

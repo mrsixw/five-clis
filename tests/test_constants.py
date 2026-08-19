@@ -1,0 +1,54 @@
+"""Tests for the centralised constants in fiveclis.constants."""
+
+import fiveclis.constants as constants
+
+
+def test_app_identity():
+    assert constants.APP_NAME == "fiveclis"
+    assert constants.BINARY_NAME == "five-clis"
+    assert constants.ENVVAR_PREFIX == "FIVE_CLIS"
+    assert constants.LOG_FILENAME == "fiveclis.log"
+
+
+def test_update_constants():
+    assert constants.UPDATE_CHECK_REPO == "mrsixw/five-clis"
+    assert constants.RELEASE_ASSET_URL.startswith("https://github.com/")
+    assert constants.RELEASE_ASSET_URL.endswith(f"/download/{constants.BINARY_NAME}")
+    assert constants.VERSION_CACHE_FILENAME == "latest_version.json"
+    assert constants.VERSION_CACHE_TTL_SECONDS == 86400
+
+
+def test_cache_constants():
+    assert constants.DEFAULT_CACHE_TTL == 300
+    assert constants.TTL_SUFFIX_MAP == {"s": 1, "m": 60, "h": 3600}
+
+
+def test_ui_constants():
+    assert len(constants.APP_ITEMS) > 0
+    assert "purple" in constants.SEASONAL_PALETTES
+    assert len(constants.PRIDE_RAINBOW) == 6
+    assert len(constants.HOLI_RAINBOW) == 6
+
+
+def test_holiday_tables_cover_the_current_decade():
+    tables = [
+        constants._DIWALI,
+        constants._EID_AL_ADHA,
+        constants._EID_AL_FITR,
+        constants._HANUKKAH_START,
+        constants._HOLI,
+        constants._MID_AUTUMN,
+        constants._PASSOVER_START,
+        constants._ROSH_HASHANAH,
+        constants._SUKKOT_START,
+    ]
+    for table in tables:
+        assert set(range(2024, 2046)) <= set(table)
+
+
+def test_holiday_table_entries_are_valid_dates():
+    import datetime
+
+    for table in (constants._DIWALI, constants._HOLI, constants._ROSH_HASHANAH):
+        for year, (month, day) in table.items():
+            datetime.date(year, month, day)  # raises ValueError if bogus
