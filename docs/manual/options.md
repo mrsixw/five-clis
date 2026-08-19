@@ -102,6 +102,11 @@ Config key: `seasonal-calendar = "western"`
 Disable all ANSI colour output. Also honoured via the `FIVE_CLIS_NO_COLOUR`
 environment variable, set to any non-empty value.
 
+Config key: `no-colour = false`
+
+Any one of the flag, the environment variable, or the config key switching
+colour off is enough; none of them can switch it back on.
+
 ## Config options
 
 ### `--config PATH`

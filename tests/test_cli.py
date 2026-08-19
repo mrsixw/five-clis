@@ -556,3 +556,63 @@ def test_unparsable_env_value_never_aborts_the_run(monkeypatch, quiet_updates, v
     result = _invoke("greet", "--name", "x")
     assert result.exit_code == 0, result.output
     assert "not a valid boolean" not in result.output
+
+
+# ── no-colour config key ───────────────────────────────────────────────────
+
+
+def _greet_output(tmp_path, body="", extra_args=()):
+    """Invoke greet with colour forced on, returning the output."""
+    cfg = tmp_path / "config.toml"
+    cfg.write_text(body)
+    runner = CliRunner()
+    return runner.invoke(
+        main,
+        [
+            "--config",
+            str(cfg),
+            "--seasonal-calendar",
+            "rainbow",
+            *extra_args,
+            "greet",
+            "--name",
+            "x",
+        ],
+        color=True,
+    )
+
+
+def test_colour_on_by_default(tmp_path, quiet_updates, monkeypatch):
+    monkeypatch.delenv("FIVE_CLIS_NO_COLOUR", raising=False)
+    result = _greet_output(tmp_path)
+    assert result.exit_code == 0, result.output
+    assert "\033[" in result.output
+
+
+def test_no_colour_config_key_disables_colour(tmp_path, quiet_updates, monkeypatch):
+    monkeypatch.delenv("FIVE_CLIS_NO_COLOUR", raising=False)
+    result = _greet_output(tmp_path, "no-colour = true\n")
+    assert result.exit_code == 0, result.output
+    assert "\033[" not in result.output
+
+
+def test_no_colour_config_key_false_leaves_colour_on(
+    tmp_path, quiet_updates, monkeypatch
+):
+    monkeypatch.delenv("FIVE_CLIS_NO_COLOUR", raising=False)
+    result = _greet_output(tmp_path, "no-colour = false\n")
+    assert "\033[" in result.output
+
+
+def test_no_colour_flag_beats_a_false_config_key(tmp_path, quiet_updates, monkeypatch):
+    # Any one of the three switching colour off is enough; none can switch it
+    # back on.
+    monkeypatch.delenv("FIVE_CLIS_NO_COLOUR", raising=False)
+    result = _greet_output(tmp_path, "no-colour = false\n", ["--no-colour"])
+    assert "\033[" not in result.output
+
+
+def test_no_colour_env_beats_a_false_config_key(tmp_path, quiet_updates, monkeypatch):
+    monkeypatch.setenv("FIVE_CLIS_NO_COLOUR", "1")
+    result = _greet_output(tmp_path, "no-colour = false\n")
+    assert "\033[" not in result.output

@@ -226,7 +226,7 @@ def main(
         seasonal_calendar=_resolved(
             seasonal_calendar, cfg, "seasonal-calendar", "western"
         ),
-        colour=not no_colour,
+        colour=not (no_colour or cfg.get("no-colour", False)),
         cache_enabled=_resolved(cache_enabled, cfg, "cache", False),
         cache_ttl=ttl,
         update_check=not (no_update_check or cfg.get("no-update-check", False)),
