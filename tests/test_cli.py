@@ -494,3 +494,65 @@ def test_debug_summary_goes_to_stderr(quiet_updates):
     result = runner.invoke(main, ["--debug-summary", "greet", "--name", "x"])
     assert "Debug summary" in result.output
     assert "Debug summary" not in result.stdout
+
+
+# ── Environment-variable presence semantics ────────────────────────────────
+
+
+@pytest.mark.parametrize("value", ["1", "0", "false", "off", "banana"])
+def test_no_update_check_env_any_non_empty_value_suppresses(
+    monkeypatch, quiet_updates, value
+):
+    # Presence is the signal, per no-color.org: the value is never parsed.
+    calls = []
+    monkeypatch.setattr(
+        cli_mod, "check_for_update", lambda show_summary=False: calls.append(1)
+    )
+    monkeypatch.setenv("FIVE_CLIS_NO_UPDATE_CHECK", value)
+    result = _invoke("greet", "--name", "x")
+    assert result.exit_code == 0, result.output
+    assert calls == [], f"{value!r} should suppress the update check"
+
+
+def test_no_update_check_env_empty_leaves_check_enabled(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        cli_mod, "check_for_update", lambda show_summary=False: calls.append(1)
+    )
+    monkeypatch.setenv("FIVE_CLIS_NO_UPDATE_CHECK", "")
+    result = _invoke("greet", "--name", "x")
+    assert result.exit_code == 0
+    assert calls == [1], "an empty value must not suppress the update check"
+
+
+@pytest.mark.parametrize("value", ["1", "0", "false", "banana"])
+def test_no_colour_env_any_non_empty_value_disables_colour(
+    monkeypatch, quiet_updates, value
+):
+    monkeypatch.setenv("FIVE_CLIS_NO_COLOUR", value)
+    runner = CliRunner()
+    result = runner.invoke(
+        main, ["--seasonal-calendar", "rainbow", "greet", "--name", "x"], color=True
+    )
+    assert result.exit_code == 0, result.output
+    assert "\033[" not in result.output, f"{value!r} should disable colour"
+
+
+def test_no_colour_env_empty_leaves_colour_enabled(monkeypatch, quiet_updates):
+    monkeypatch.setenv("FIVE_CLIS_NO_COLOUR", "")
+    runner = CliRunner()
+    result = runner.invoke(
+        main, ["--seasonal-calendar", "rainbow", "greet", "--name", "x"], color=True
+    )
+    assert result.exit_code == 0
+    assert "\033[" in result.output
+
+
+@pytest.mark.parametrize("var", ["FIVE_CLIS_NO_UPDATE_CHECK", "FIVE_CLIS_NO_COLOUR"])
+def test_unparsable_env_value_never_aborts_the_run(monkeypatch, quiet_updates, var):
+    # The regression: Click's envvar= on a flag rejected unrecognised values,
+    # so a typo in a shell profile broke every invocation.
+    monkeypatch.setenv(var, "banana")
+    result = _invoke("greet", "--name", "x")
+    assert result.exit_code == 0, result.output
+    assert "not a valid boolean" not in result.output
