@@ -1,6 +1,8 @@
 from freezegun import freeze_time
 
 from fiveclis.ui import (
+    CALENDAR_NAMES,
+    CALENDARS,
     HOLI_RAINBOW,
     PRIDE_RAINBOW,
     SEASONAL_PALETTES,
@@ -105,3 +107,39 @@ def test_apply_seasonal_colour_june_cycles():
     r0 = apply_seasonal_colour("a", 0, calendar="western")
     r1 = apply_seasonal_colour("a", 1, calendar="western")
     assert r0 != r1
+
+
+# ── The two date-independent calendars ─────────────────────────────────────
+
+
+def test_calendar_names_are_all_selectable():
+    # Every name offered to click.Choice must actually resolve, or the flag
+    # accepts a value that then silently does nothing. "off" is the one
+    # exception: apply_seasonal_colour short-circuits before the lookup.
+    for name in CALENDAR_NAMES:
+        assert name == "off" or name in CALENDARS
+
+
+@freeze_time("2026-03-04")
+def test_rainbow_calendar_cycles_outside_june():
+    # Plain March: the western calendar has no colour here, but rainbow does.
+    assert apply_seasonal_colour("a", 0, calendar="western") == "a"
+    r0 = apply_seasonal_colour("a", 0, calendar="rainbow")
+    r1 = apply_seasonal_colour("a", 1, calendar="rainbow")
+    assert PRIDE_RAINBOW[0] in r0
+    assert PRIDE_RAINBOW[1] in r1
+    assert r0 != r1
+
+
+@freeze_time("2026-01-15")
+def test_rainbow_calendar_ignores_the_january_purple():
+    result = apply_seasonal_colour("hello", 0, calendar="rainbow")
+    assert SEASONAL_PALETTES["purple"] not in result
+    assert PRIDE_RAINBOW[0] in result
+
+
+@freeze_time("2026-12-25")
+def test_off_calendar_returns_text_untouched():
+    # Christmas Day, when the western calendar is at its loudest.
+    assert SEASONAL_PALETTES["red"] in apply_seasonal_colour("a", 0)
+    assert apply_seasonal_colour("a", 0, calendar="off") == "a"

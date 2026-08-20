@@ -309,16 +309,40 @@ def _western_calendar(today: datetime.date) -> "str | list[str] | None":
     return None
 
 
+def _rainbow_calendar(today: datetime.date) -> "str | list[str] | None":
+    """Return the Pride rainbow every day of the year.
+
+    Unlike its neighbours this ignores *today* entirely: it is a permanent
+    opt-in rather than a date-driven holiday, for users who want the cycling
+    palette year round.
+    """
+    return PRIDE_RAINBOW
+
+
 CALENDARS: dict[str, object] = {
     "east-asian": _east_asian_calendar,
     "hindu": _hindu_calendar,
     "islamic": _islamic_calendar,
     "jewish": _jewish_calendar,
+    "rainbow": _rainbow_calendar,
     "sikh": _sikh_calendar,
     "western": _western_calendar,
 }
 
-CALENDAR_NAMES = ["western", "jewish", "islamic", "hindu", "sikh", "east-asian"]
+#: Accepted values for ``--seasonal-calendar``, in help-text order: the
+#: date-driven calendars first, then the two that ignore the date entirely.
+#: ``"off"`` has no entry in CALENDARS — apply_seasonal_colour short-circuits
+#: on it before any lookup — but it must appear here or click.Choice rejects it.
+CALENDAR_NAMES = [
+    "western",
+    "jewish",
+    "islamic",
+    "hindu",
+    "sikh",
+    "east-asian",
+    "rainbow",
+    "off",
+]
 
 
 def apply_seasonal_colour(text: str, index: int, calendar: str = "western") -> str:

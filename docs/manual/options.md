@@ -84,6 +84,16 @@ Choose which cultural calendar drives seasonal colours.
 | `hindu` | Diwali, Holi |
 | `sikh` | Vaisakhi, Bandi Chhor Divas |
 | `east-asian` | Lunar New Year, Mid-Autumn, Songkran, Hanami |
+| `rainbow` | The Pride cycle every day of the year, not just in June |
+| `off` | No seasonal colours; the `--theme` colours apply instead |
+
+`rainbow` and `off` are the two values that ignore the date. `off` is
+equivalent to `--no-seasonal-colours`.
+
+```bash
+five-clis --seasonal-calendar rainbow
+five-clis --seasonal-calendar off
+```
 
 Config key: `seasonal-calendar = "western"`
 
