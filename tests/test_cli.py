@@ -1,3 +1,5 @@
+import re
+
 from click.testing import CliRunner
 
 from fiveclis import cli as cli_mod
@@ -12,7 +14,11 @@ def _invoke(*args, **kwargs):
 def test_version():
     result = _invoke("--version")
     assert result.exit_code == 0
-    assert "fiveclis" in result.output or "0." in result.output
+    # Assert the shape, not a substring of one particular version. The old
+    # check looked for "0.", which matched 1.0.2 by luck and not 1.1.0; and
+    # for "fiveclis", which never matched, since CliRunner takes the prog name
+    # from the callback function (`main`) rather than the console script.
+    assert re.search(r"\bversion \d+\.\d+\.\d+", result.output), result.output
 
 
 def test_help():
