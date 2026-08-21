@@ -134,17 +134,20 @@ jobs:
       - name: Install zsh and fish
         run: sudo apt-get install -y zsh fish
 
-      - name: Verify completion scripts exist
+      - name: Verify completion scripts exist and source cleanly
         run: |
           test -f completions/five-clis.bash
           test -f completions/_five-clis
           test -f completions/five-clis.fish
+          source completions/five-clis.bash && complete -p five-clis
+          zsh -i -c "autoload -Uz compinit && compinit -u && source completions/_five-clis && echo 'zsh ok'"
+          fish -c "source completions/five-clis.fish && echo 'fish ok'"
 
-      - name: Verify completion command works for all shells
+      - name: Verify completions command works for all shells
         run: |
-          uv run five-clis completion bash | grep -q "_FIVE_CLIS_COMPLETE"
-          uv run five-clis completion zsh | grep -q "_FIVE_CLIS_COMPLETE"
-          uv run five-clis completion fish | grep -q "_FIVE_CLIS_COMPLETE"
+          uv run five-clis completions bash | grep -q "_FIVE_CLIS_COMPLETE"
+          uv run five-clis completions zsh | grep -q "_FIVE_CLIS_COMPLETE"
+          uv run five-clis completions fish | grep -q "_FIVE_CLIS_COMPLETE"
 
   release:
     if: "github.ref == 'refs/heads/main' && github.event_name == 'push' && !startsWith(github.event.head_commit.message, 'chore: bump version')"
@@ -217,3 +220,17 @@ jobs:
 
       - name: Verify installation
         run: ~/.local/bin/five-clis --version
+
+      - name: Install zsh and fish
+        run: sudo apt-get install -y zsh fish
+
+      - name: Verify bash completions
+        run: |
+          source ~/.local/share/bash-completion/completions/five-clis
+          complete -p five-clis
+
+      - name: Verify zsh completions
+        run: zsh -i -c "autoload -Uz compinit && compinit -u && source ~/.local/share/zsh/site-functions/_five-clis && echo 'zsh ok'"
+
+      - name: Verify fish completions
+        run: fish -c "source ~/.config/fish/completions/five-clis.fish && echo 'fish ok'"

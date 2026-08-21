@@ -26,12 +26,12 @@ Merge any options missing from your existing config file in from the
 template, writing a timestamped backup first. Useful after upgrading to a
 release that introduces new config keys.
 
-### `completion [bash|zsh|fish]`
+### `completions [bash|zsh|fish]`
 
 Print the shell completion script. Eval in your shell config:
 
 ```bash
-eval "$(five-clis completion bash)"
+eval "$(five-clis completions bash)"
 ```
 
 ## Display options
