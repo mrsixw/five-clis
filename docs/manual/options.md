@@ -34,6 +34,24 @@ Print the shell completion script. Eval in your shell config:
 eval "$(five-clis completions bash)"
 ```
 
+### `update`
+
+Download the latest release and replace the running executable with it.
+
+```bash
+five-clis update
+```
+
+The replacement is atomic, so an interrupted download leaves the working
+binary in place. Nothing is written unless a newer release actually exists.
+
+The man page is not refreshed — re-run `install.sh` for that. Completion
+scripts need no refresh: they call back into the binary, so they follow it
+automatically.
+
+Not to be confused with `config update`, which merges new keys into your
+config file, or `--no-update-check`, which silences the passive notice.
+
 ## Display options
 
 ### `--theme`
@@ -66,6 +84,16 @@ Choose which cultural calendar drives seasonal colours.
 | `hindu` | Diwali, Holi |
 | `sikh` | Vaisakhi, Bandi Chhor Divas |
 | `east-asian` | Lunar New Year, Mid-Autumn, Songkran, Hanami |
+| `rainbow` | The Pride cycle every day of the year, not just in June |
+| `off` | No seasonal colours; the `--theme` colours apply instead |
+
+`rainbow` and `off` are the two values that ignore the date. `off` is
+equivalent to `--no-seasonal-colours`.
+
+```bash
+five-clis --seasonal-calendar rainbow
+five-clis --seasonal-calendar off
+```
 
 Config key: `seasonal-calendar = "western"`
 

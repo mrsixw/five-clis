@@ -48,6 +48,21 @@ eval "$(five-clis completions zsh)"    # zsh
 five-clis completions fish | source    # fish
 ```
 
+`install.sh` installs these permanently and prints the one line your shell
+needs to load them. Dropping the files into place is not enough on its own:
+zsh wants the directory on `fpath` above `compinit`, and bash wants either the
+`bash-completion` package or an explicit `source`. Only fish needs nothing.
+
+## Updating
+
+```bash
+five-clis update                       # fetch and install the latest release
+```
+
+Replaces the running executable in place, atomically — an interrupted download
+leaves the working binary untouched. Re-run `install.sh` if you also want a
+refreshed man page.
+
 ## Caching
 
 ```bash

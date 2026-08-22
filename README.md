@@ -11,7 +11,7 @@ Click **Use this template** to scaffold a new project with everything wired up a
 | Essential | Description |
 | --------- | ----------- |
 | **Click** | Fully-wired command group with `--version`, `--help`, and a shared settings object |
-| **Shell completions** | bash, zsh, fish — generated and validated in CI |
+| **Shell completions** | bash, zsh, fish — generated and validated in CI, activation guidance printed by the installer |
 | **Config file** | TOML config with XDG paths, `config init`, `config show` |
 | **Themes** | `default`, `dark`, `light`, `mono`, `rainbow` — plus the full seasonal colour system |
 | **Seasonal colours** | Date-driven ANSI palettes: western, jewish, islamic, hindu, sikh, east-asian |
@@ -21,6 +21,7 @@ Click **Use this template** to scaffold a new project with everything wired up a
 | **CI** | GitHub Actions: test, lint, build, spell, docs-lint, man, completions, release |
 | **Release pipeline** | `git-mkver` version bumping, shiv binary, man page, `gh release create` |
 | **install.sh** | One-liner install with binary + man page + shell completions |
+| **Self-update** | `five-clis update` swaps in the latest release atomically |
 
 ## Installation
 
@@ -66,6 +67,7 @@ five-clis greet --name Alice
 five-clis config init
 five-clis config show
 eval "$(five-clis completions bash)"
+five-clis update
 ```
 
 ## Using this template

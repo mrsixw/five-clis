@@ -12,6 +12,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
+from .constants import APP_NAME
 from .fsutil import atomic_write_text
 from .xdg import get_config_dir, get_config_paths
 
@@ -34,7 +35,16 @@ _DEFAULT_CONFIG_CONTENT = """\
 # seasonal-colours = true
 
 # Which cultural calendar drives the seasonal colour scheme.
-# Choices: western, jewish, islamic, hindu, sikh, east-asian
+# Choices:
+#   western    - Christmas, Easter, Pride Month, Halloween, Lunar New Year
+#   jewish     - Hanukkah, Passover, Rosh Hashanah, Sukkot
+#   islamic    - Eid al-Fitr, Eid al-Adha
+#   hindu      - Diwali, Holi
+#   sikh       - Vaisakhi, Bandi Chhor Divas
+#   east-asian - Lunar New Year, Mid-Autumn, Songkran, Hanami
+#   rainbow    - the Pride cycle every day of the year, not just in June
+#   off        - disable seasonal colours entirely
+# Note: seasonal-colours = false is equivalent to seasonal-calendar = "off"
 # Equivalent to: --seasonal-calendar <name>
 # seasonal-calendar = "western"
 
@@ -205,7 +215,7 @@ def update_config(config_path: str | None = None) -> bool:
     click.echo(f"💾 Backup saved to {backup_path}", err=True)
 
     try:
-        _version = pkg_version("fiveclis")
+        _version = pkg_version(APP_NAME)
     except PackageNotFoundError:
         _version = "unknown"
 

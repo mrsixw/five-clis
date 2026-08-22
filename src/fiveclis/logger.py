@@ -1,16 +1,15 @@
 import logging
 from pathlib import Path
 
+from .constants import APP_NAME, LOG_FILENAME
 from .xdg import get_state_dir
-
-_LOG_FILENAME = "fiveclis.log"
 
 
 def _get_log_path() -> Path:
-    return get_state_dir() / _LOG_FILENAME
+    return get_state_dir() / LOG_FILENAME
 
 
-logger = logging.getLogger("fiveclis")
+logger = logging.getLogger(APP_NAME)
 
 
 def configure() -> None:

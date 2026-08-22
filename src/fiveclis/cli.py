@@ -13,19 +13,30 @@ through every function signature.
 
 import os
 import random
+import shutil
+import sys
+from enum import StrEnum, auto
 
 import click
 
 from .cache import parse_ttl
 from .config import load_config, show_config, update_config, write_default_config
+from .constants import (
+    APP_ITEMS,
+    APP_NAME,
+    BINARY_NAME,
+    DEFAULT_CACHE_TTL,
+    ENVVAR_PREFIX,
+)
 from .logger import configure as configure_logging
 from .settings import Settings
-from .ui import APP_ITEMS, CALENDAR_NAMES, THEME_NAMES, get_theme
-from .updater import check_for_update
+from .ui import CALENDAR_NAMES, THEME_NAMES, get_theme
+from .updater import UpdateStatus, check_for_update, perform_update
 
-_ENVVAR_PREFIX = "FIVE_CLIS"
 _CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
-_DEFAULT_CACHE_TTL = 300
+
+# Subcommands that must run before, and independently of, config resolution.
+_CONFIG_FREE_COMMANDS = frozenset({"completions", "update"})
 
 
 def _resolved(flag_value, cfg: dict, key: str, default):
@@ -36,7 +47,7 @@ def _resolved(flag_value, cfg: dict, key: str, default):
 
 
 @click.group(context_settings=_CONTEXT_SETTINGS, invoke_without_command=True)
-@click.version_option(package_name="fiveclis")
+@click.version_option(package_name=APP_NAME)
 # ── Config ─────────────────────────────────────────────────────────────────
 @click.option(
     "--config",
@@ -68,7 +79,7 @@ def _resolved(flag_value, cfg: dict, key: str, default):
     "no_colour",
     is_flag=True,
     default=False,
-    envvar=f"{_ENVVAR_PREFIX}_NO_COLOUR",
+    envvar=f"{ENVVAR_PREFIX}_NO_COLOUR",
     help="Disable all ANSI colour output.",
 )
 # ── Caching ─────────────────────────────────────────────────────────────────
@@ -89,7 +100,7 @@ def _resolved(flag_value, cfg: dict, key: str, default):
     "--no-update-check",
     is_flag=True,
     default=False,
-    envvar=f"{_ENVVAR_PREFIX}_NO_UPDATE_CHECK",
+    envvar=f"{ENVVAR_PREFIX}_NO_UPDATE_CHECK",
     help="Disable the automatic update check.",
 )
 @click.pass_context
@@ -114,9 +125,16 @@ def main(
     """
     configure_logging()
 
+    # completions and update must stay usable when the config file is broken.
+    # The shell runs the completion script on every tab-press, so a config error
+    # would spew into the user's prompt; and if a bad config could block update,
+    # there would be no way to install the release that fixes it.
+    if ctx.invoked_subcommand in _CONFIG_FREE_COMMANDS:
+        return
+
     try:
         cfg = load_config(config_path)
-        ttl = parse_ttl(_resolved(cache_ttl, cfg, "cache-ttl", _DEFAULT_CACHE_TTL))
+        ttl = parse_ttl(_resolved(cache_ttl, cfg, "cache-ttl", DEFAULT_CACHE_TTL))
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
 
@@ -224,8 +242,26 @@ def config_update(settings: Settings):
 # ── Shell completions ───────────────────────────────────────────────────────
 
 
+class Shell(StrEnum):
+    """A shell that ``completions`` can emit a completion script for.
+
+    ``StrEnum`` + ``auto()`` yields the lowercase member name as the value, so
+    members pass straight into Click's completion machinery and into f-strings
+    without a trail of ``.value``.
+    """
+
+    BASH = auto()
+    ZSH = auto()
+    FISH = auto()
+
+
+# Click matches enum choices on member *names*, so click.Choice(Shell) would
+# demand "BASH" rather than "bash" — pass the values explicitly instead.
+_SHELL_CHOICES = [shell.value for shell in Shell]
+
+
 @main.command()
-@click.argument("shell", type=click.Choice(["bash", "zsh", "fish"]))
+@click.argument("shell", type=click.Choice(_SHELL_CHOICES))
 def completions(shell: str):
     """Print the shell completion script for SHELL.
 
@@ -233,11 +269,67 @@ def completions(shell: str):
     """
     from click.shell_completion import get_completion_class
 
-    comp_cls = get_completion_class(shell)
+    comp_cls = get_completion_class(Shell(shell))
     comp = comp_cls(
         cli=main,
         ctx_args={},
-        prog_name="five-clis",
-        complete_var="_FIVE_CLIS_COMPLETE",
+        prog_name=BINARY_NAME,
+        complete_var=f"_{ENVVAR_PREFIX}_COMPLETE",
     )
     click.echo(comp.source(), nl=False)
+
+
+# ── Self-update ─────────────────────────────────────────────────────────────
+
+
+def _current_executable_path() -> str:
+    """Resolve the absolute path of the running five-clis executable.
+
+    ``sys.argv[0]`` is what the user actually invoked, so prefer it whenever it
+    names a real file: ``./five-clis update`` must update *that* copy, not a
+    different one that happens to sit earlier on PATH. Fall back to a PATH
+    lookup for the usual case, where argv[0] is the bare console-script name.
+
+    ``abspath`` rather than ``resolve`` so a symlinked install has its link
+    replaced and not the file it points at, and so a relative argv[0] cannot
+    send ``os.replace()`` to the current working directory.
+    """
+    invoked = sys.argv[0]
+    if os.sep in invoked and os.path.isfile(invoked):
+        return os.path.abspath(invoked)
+    return os.path.abspath(shutil.which(BINARY_NAME) or invoked)
+
+
+@main.command()
+def update():
+    """Download and install the latest five-clis release over this executable."""
+    click.echo(
+        click.style("🔍 Checking for a newer release...", fg="cyan"),
+        err=True,
+    )
+    status, current, detail = perform_update(_current_executable_path())
+
+    if status is UpdateStatus.UNKNOWN:
+        raise click.ClickException("Could not reach GitHub to check for a new release.")
+    if status is UpdateStatus.ERROR:
+        raise click.ClickException(f"Update failed: {detail}")
+    if status is UpdateStatus.UP_TO_DATE:
+        click.echo(
+            click.style(f"✅ Already up to date, v{current}.", fg="green"),
+            err=True,
+        )
+        return
+
+    click.echo(
+        click.style(f"✅ five-clis has been updated to v{detail}.", fg="green"),
+        err=True,
+    )
+    # The completion scripts re-invoke the binary, so they track it for free.
+    # The man page is a static file and may sit somewhere needing privileges,
+    # so point at the installer rather than trying to rewrite it here.
+    click.echo(
+        click.style(
+            "   Re-run install.sh if you also want a refreshed man page.", fg="cyan"
+        ),
+        err=True,
+    )
