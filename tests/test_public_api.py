@@ -109,7 +109,9 @@ def test_all_entries_exist_and_are_public(path: Path):
     module = __import__(f"fiveclis.{path.stem}", fromlist=["__all__"])
     exported = getattr(module, "__all__", [])
 
-    assert exported == sorted(exported), f"{path.name}: __all__ is not sorted"
+    # Ordering is RUF022's job, not this test's — the two use different
+    # conventions (RUF022 groups SCREAMING_CASE before CamelCase before
+    # snake_case) and asserting plain sorted() here just fights the linter.
     assert len(exported) == len(set(exported)), f"{path.name}: __all__ has duplicates"
 
     for name in exported:
