@@ -14,3 +14,7 @@
 - **Before every commit:** `make format && make lint && make test`
 - stdout for data; stderr for progress/warnings/errors
 - No bare `except Exception`
+- A leading `_` means "internal to this module". Anything a sibling module
+  imports must not have one, and must appear in that module's `__all__`.
+  `tests/test_public_api.py` enforces this; tests may still reach into the
+  internals of the module they test.

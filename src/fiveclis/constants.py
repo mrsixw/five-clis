@@ -7,6 +7,37 @@ modules. Nothing here imports from the rest of the package, so it is always
 safe to import from anywhere.
 """
 
+__all__ = [
+    "APP_ITEMS",
+    "APP_NAME",
+    "BINARY_NAME",
+    "BIRTHDAY",
+    "BIRTHDAY_NAME",
+    "BURGER_RECIPES",
+    "CAKE_RECIPES",
+    "CHRISTMAS",
+    "DEFAULT_CACHE_TTL",
+    "DIWALI",
+    "EID_AL_ADHA",
+    "EID_AL_FITR",
+    "ENVVAR_PREFIX",
+    "HANUKKAH_START",
+    "HOLI_DATES",
+    "HOLI_RAINBOW",
+    "LOG_FILENAME",
+    "MID_AUTUMN",
+    "PASSOVER_START",
+    "PRIDE_RAINBOW",
+    "RELEASE_ASSET_URL",
+    "ROSH_HASHANAH",
+    "SEASONAL_PALETTES",
+    "SUKKOT_START",
+    "TTL_SUFFIX_MAP",
+    "UPDATE_CHECK_REPO",
+    "VERSION_CACHE_FILENAME",
+    "VERSION_CACHE_TTL_SECONDS",
+]
+
 # ── App identity ───────────────────────────────────────────────────────────
 
 #: Import name of the package, and the directory name used under the XDG dirs.
@@ -76,7 +107,7 @@ APP_ITEMS = ["🍔", "🧃", "🍟", "🥤", "🍦", "🍕", "🌮", "🌯", "�
 # Gregorian formula, so they are tabulated rather than computed. Easter and
 # Lunar New Year are the exceptions and are calculated in ``ui.py``.
 
-_DIWALI: dict[int, tuple[int, int]] = {
+DIWALI: dict[int, tuple[int, int]] = {
     2024: (11, 1),
     2025: (10, 20),
     2026: (11, 8),
@@ -100,7 +131,7 @@ _DIWALI: dict[int, tuple[int, int]] = {
     2044: (10, 21),
     2045: (11, 9),
 }
-_EID_AL_ADHA: dict[int, tuple[int, int]] = {
+EID_AL_ADHA: dict[int, tuple[int, int]] = {
     2024: (6, 16),
     2025: (6, 6),
     2026: (5, 26),
@@ -124,7 +155,7 @@ _EID_AL_ADHA: dict[int, tuple[int, int]] = {
     2044: (11, 1),
     2045: (10, 22),
 }
-_EID_AL_FITR: dict[int, tuple[int, int]] = {
+EID_AL_FITR: dict[int, tuple[int, int]] = {
     2024: (4, 10),
     2025: (3, 30),
     2026: (3, 20),
@@ -148,7 +179,7 @@ _EID_AL_FITR: dict[int, tuple[int, int]] = {
     2044: (8, 23),
     2045: (8, 12),
 }
-_HANUKKAH_START: dict[int, tuple[int, int]] = {
+HANUKKAH_START: dict[int, tuple[int, int]] = {
     2024: (12, 25),
     2025: (12, 14),
     2026: (12, 4),
@@ -172,7 +203,7 @@ _HANUKKAH_START: dict[int, tuple[int, int]] = {
     2044: (12, 15),
     2045: (12, 5),
 }
-_HOLI: dict[int, tuple[int, int]] = {
+HOLI_DATES: dict[int, tuple[int, int]] = {
     2024: (3, 25),
     2025: (3, 14),
     2026: (3, 3),
@@ -196,7 +227,7 @@ _HOLI: dict[int, tuple[int, int]] = {
     2044: (3, 16),
     2045: (3, 5),
 }
-_MID_AUTUMN: dict[int, tuple[int, int]] = {
+MID_AUTUMN: dict[int, tuple[int, int]] = {
     2024: (9, 17),
     2025: (10, 6),
     2026: (9, 25),
@@ -220,7 +251,7 @@ _MID_AUTUMN: dict[int, tuple[int, int]] = {
     2044: (10, 5),
     2045: (9, 24),
 }
-_PASSOVER_START: dict[int, tuple[int, int]] = {
+PASSOVER_START: dict[int, tuple[int, int]] = {
     2024: (4, 22),
     2025: (4, 12),
     2026: (4, 1),
@@ -244,7 +275,7 @@ _PASSOVER_START: dict[int, tuple[int, int]] = {
     2044: (4, 13),
     2045: (4, 3),
 }
-_ROSH_HASHANAH: dict[int, tuple[int, int]] = {
+ROSH_HASHANAH: dict[int, tuple[int, int]] = {
     2024: (10, 2),
     2025: (9, 22),
     2026: (9, 11),
@@ -268,7 +299,7 @@ _ROSH_HASHANAH: dict[int, tuple[int, int]] = {
     2044: (9, 22),
     2045: (9, 12),
 }
-_SUKKOT_START: dict[int, tuple[int, int]] = {
+SUKKOT_START: dict[int, tuple[int, int]] = {
     2024: (10, 16),
     2025: (10, 6),
     2026: (9, 25),
