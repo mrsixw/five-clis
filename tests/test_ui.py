@@ -1,5 +1,9 @@
+import datetime
+
 from freezegun import freeze_time
 
+from fiveclis import ui as ui_mod
+from fiveclis.constants import BIRTHDAY_NAME, BURGER_RECIPES, CAKE_RECIPES
 from fiveclis.ui import (
     CALENDAR_NAMES,
     CALENDARS,
@@ -9,7 +13,16 @@ from fiveclis.ui import (
     THEME_NAMES,
     THEMES,
     apply_seasonal_colour,
+    generate_terminal_url_anchor,
+    get_random_burger_recipe,
+    get_random_cake_recipe,
     get_theme,
+    has_shown_holiday_gift,
+    is_birthday,
+    is_christmas,
+    mark_holiday_gift_shown,
+    render_burger_recipe,
+    render_cake_recipe,
 )
 
 
@@ -143,3 +156,114 @@ def test_off_calendar_returns_text_untouched():
     # Christmas Day, when the western calendar is at its loudest.
     assert SEASONAL_PALETTES["red"] in apply_seasonal_colour("a", 0)
     assert apply_seasonal_colour("a", 0, calendar="off") == "a"
+
+
+# ── Easter eggs ────────────────────────────────────────────────────────────
+
+
+def test_recipe_collections_share_a_shape():
+    burger_fields = {
+        "title",
+        "style",
+        "patty",
+        "toppings",
+        "cook",
+        "tip",
+        "source",
+        "source_url",
+    }
+    for recipe in BURGER_RECIPES:
+        assert burger_fields <= set(recipe)
+    for recipe in CAKE_RECIPES:
+        assert {"title", "style", "batter", "frosting", "bake", "tip"} <= set(recipe)
+
+
+def test_random_recipes_come_from_the_collections():
+    assert get_random_burger_recipe() in BURGER_RECIPES
+    assert get_random_cake_recipe() in CAKE_RECIPES
+
+
+def test_is_birthday_matches_the_configured_date():
+    assert is_birthday(datetime.date(2026, 1, 8))
+    assert not is_birthday(datetime.date(2026, 1, 9))
+
+
+def test_is_birthday_is_always_false_when_disabled(monkeypatch):
+    # A scaffolded CLI switches the surprise off by setting BIRTHDAY = None.
+    monkeypatch.setattr(ui_mod, "BIRTHDAY", None)
+    assert not is_birthday(datetime.date(2026, 1, 8))
+
+
+def test_is_christmas():
+    assert is_christmas(datetime.date(2026, 12, 25))
+    assert not is_christmas(datetime.date(2026, 12, 24))
+
+
+def test_render_burger_recipe_credits_its_source():
+    rendered = render_burger_recipe(BURGER_RECIPES[0])
+    assert BURGER_RECIPES[0]["title"] in rendered
+    assert BURGER_RECIPES[0]["source"] in rendered
+    assert "Secret Burger Recipe" in rendered
+
+
+def test_render_burger_recipe_links_the_title():
+    recipe = BURGER_RECIPES[0]
+    rendered = render_burger_recipe(recipe)
+    anchor = generate_terminal_url_anchor(recipe["source_url"], recipe["title"])
+    assert anchor in rendered
+
+
+def test_render_burger_recipe_without_colour_shows_the_url_instead():
+    # OSC 8 has no business in output that may be piped or logged, so the
+    # credit falls back to a plain URL in the Source row rather than vanishing.
+    recipe = BURGER_RECIPES[0]
+    rendered = render_burger_recipe(recipe, colour=False)
+    assert "\033]8;;" not in rendered
+    assert recipe["source_url"] in rendered
+
+
+def test_terminal_url_anchor_wraps_the_text_not_the_url():
+    anchor = generate_terminal_url_anchor("https://example.com", "Click me")
+    assert anchor.startswith("\033]8;;https://example.com\033\\")
+    assert "Click me" in anchor
+    assert anchor.endswith("\033]8;;\033\\")
+
+
+def test_render_burger_recipe_christmas_header():
+    rendered = render_burger_recipe(BURGER_RECIPES[0], occasion="christmas")
+    assert "Merry Christmas" in rendered
+    assert "Secret Burger Recipe" not in rendered
+
+
+def test_render_cake_recipe_birthday_header():
+    rendered = render_cake_recipe(CAKE_RECIPES[0], occasion="birthday")
+    assert "birthday" in rendered
+    assert BIRTHDAY_NAME in rendered
+
+
+def test_holiday_gift_state_round_trips(tmp_path):
+    today = datetime.date(2026, 12, 25)
+    assert not has_shown_holiday_gift("christmas", today, state_dir=tmp_path)
+    mark_holiday_gift_shown("christmas", today, state_dir=tmp_path)
+    assert has_shown_holiday_gift("christmas", today, state_dir=tmp_path)
+
+
+def test_holiday_gift_state_expires_the_following_year(tmp_path):
+    mark_holiday_gift_shown(
+        "christmas", datetime.date(2026, 12, 25), state_dir=tmp_path
+    )
+    assert not has_shown_holiday_gift(
+        "christmas", datetime.date(2027, 12, 25), state_dir=tmp_path
+    )
+
+
+def test_holiday_gift_state_events_are_independent(tmp_path):
+    today = datetime.date(2026, 1, 8)
+    mark_holiday_gift_shown("birthday", today, state_dir=tmp_path)
+    assert not has_shown_holiday_gift("christmas", today, state_dir=tmp_path)
+
+
+def test_corrupt_holiday_gift_state_shows_the_gift_again(tmp_path):
+    # Showing a gift twice beats swallowing it for a whole year.
+    (tmp_path / "birthday_gift.json").write_text("{not json")
+    assert not has_shown_holiday_gift("birthday", datetime.date(2026, 1, 8), tmp_path)

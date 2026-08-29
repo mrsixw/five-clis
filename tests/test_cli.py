@@ -1,8 +1,11 @@
 import re
 
+import pytest
 from click.testing import CliRunner
+from freezegun import freeze_time
 
 from fiveclis import cli as cli_mod
+from fiveclis import ui as ui_mod
 from fiveclis.cli import main
 
 
@@ -351,3 +354,82 @@ def test_update_summary_is_skipped_when_update_check_is_off(monkeypatch):
     result = _invoke("--no-update-check", "--update-summary", "greet", "--name", "x")
     assert result.exit_code == 0
     assert calls == []
+
+
+# ── Easter eggs ────────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def quiet_updates(monkeypatch):
+    """Silence the update notice so easter-egg output stands alone."""
+    monkeypatch.setattr(cli_mod, "check_for_update", lambda show_summary=False: None)
+
+
+@pytest.fixture
+def gift_state(tmp_path, monkeypatch):
+    """Point the once-a-year gift state at a temp dir."""
+    monkeypatch.setattr(ui_mod, "get_state_dir", lambda: tmp_path)
+    return tmp_path
+
+
+def test_burger_flag_prints_a_recipe(quiet_updates):
+    result = _invoke("--burger", "greet", "--name", "x")
+    assert result.exit_code == 0
+    assert "Secret Burger Recipe" in result.output
+
+
+def test_cake_flag_prints_a_recipe(quiet_updates):
+    result = _invoke("--cake", "greet", "--name", "x")
+    assert result.exit_code == 0
+    assert "Secret Cake Recipe" in result.output
+
+
+def test_easter_egg_flags_are_hidden_from_help():
+    result = _invoke("--help")
+    assert "--burger" not in result.output
+    assert "--cake" not in result.output
+
+
+def test_no_easter_eggs_by_default(quiet_updates):
+    result = _invoke("greet", "--name", "x")
+    assert "Secret Burger Recipe" not in result.output
+    assert "Secret Cake Recipe" not in result.output
+
+
+@freeze_time("2026-12-25")
+def test_christmas_serves_a_burger_once_a_year(quiet_updates, gift_state):
+    first = _invoke("greet", "--name", "x")
+    assert "Merry Christmas" in first.output
+    second = _invoke("greet", "--name", "x")
+    assert "Merry Christmas" not in second.output
+
+
+@freeze_time("2026-01-08")
+def test_birthday_serves_cake_once_a_year(quiet_updates, gift_state):
+    first = _invoke("greet", "--name", "x")
+    assert "birthday" in first.output
+    second = _invoke("greet", "--name", "x")
+    assert "birthday" not in second.output
+
+
+@freeze_time("2026-12-25")
+def test_no_colour_suppresses_the_unbidden_gift(quiet_updates, gift_state):
+    # Decoration nobody asked for should not appear in plain output.
+    result = _invoke("--no-colour", "greet", "--name", "x")
+    assert "Merry Christmas" not in result.output
+
+
+@freeze_time("2026-12-25")
+def test_explicit_flag_still_works_with_no_colour(quiet_updates, gift_state):
+    # --burger was asked for, so --no-colour only strips the styling.
+    result = _invoke("--no-colour", "--burger", "greet", "--name", "x")
+    assert "Secret Burger Recipe" in result.output
+
+
+def test_easter_eggs_go_to_stderr(quiet_updates):
+    runner = CliRunner()
+    result = runner.invoke(
+        main, ["--burger", "greet", "--name", "x"], catch_exceptions=False
+    )
+    assert "Secret Burger Recipe" in result.output
+    assert "Secret Burger Recipe" not in result.stdout
