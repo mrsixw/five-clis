@@ -29,6 +29,18 @@ test: .venv
 	uv sync --extra test
 	uv run pytest -v
 
+e2e: build
+	uv sync --extra test
+	FIVE_CLIS_E2E_REQUIRE=1 uv run pytest -v -m e2e tests/e2e
+
+# CI variant: deliberately does NOT depend on build, so it runs against the
+# artifact downloaded from the build job — the same bits the release ships.
+# The REQUIRE flag turns "no binary" into a failure rather than a skip, so the
+# suite cannot silently rot to green.
+e2e-ci: .venv
+	uv sync --extra test
+	FIVE_CLIS_E2E_REQUIRE=1 uv run pytest -v -m e2e tests/e2e
+
 lint: .venv docs-lint
 	uv sync --extra lint
 	uv run ruff check .

@@ -68,6 +68,46 @@ jobs:
       - name: Verify binary version
         run: utils/check_binary_version.sh
 
+      - name: Upload binary
+        uses: actions/upload-artifact@v7
+        with:
+          name: five-clis
+          path: dist/five-clis
+          if-no-files-found: error
+
+  e2e:
+    name: End-to-end
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          version: "latest"
+
+      # Runs against the artifact the build job produced, not a fresh build,
+      # so the bits under test are the bits that ship.
+      - name: Download binary
+        uses: actions/download-artifact@v8
+        with:
+          name: five-clis
+          path: dist
+
+      # Artifacts travel as zips, which do not preserve the executable bit.
+      - name: Restore the executable bit
+        run: chmod +x dist/five-clis
+
+      - name: Run end-to-end suite
+        run: make e2e-ci
+
   spell:
     runs-on: ubuntu-latest
     steps:
@@ -152,7 +192,7 @@ jobs:
   release:
     if: "github.ref == 'refs/heads/main' && github.event_name == 'push' && !startsWith(github.event.head_commit.message, 'chore: bump version')"
     runs-on: ubuntu-latest
-    needs: [build, man, completions]
+    needs: [build, e2e, man, completions]
     permissions:
       contents: write
     steps:
