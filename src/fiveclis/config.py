@@ -68,6 +68,13 @@ _DEFAULT_CONFIG_CONTENT = """\
 # Has no effect when no-update-check is true.
 # Equivalent to: --update-summary / --no-update-summary
 # update-summary = false
+
+# ----- Diagnostics -----
+
+# Print a run summary to stderr when the command finishes: elapsed time, work
+# done, and cache state.
+# Equivalent to: --debug-summary / --no-debug-summary
+# debug-summary = false
 """
 
 

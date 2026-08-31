@@ -122,8 +122,6 @@ How long to cache results. Accepts seconds (`300`), or suffixed strings (`5m`, `
 
 Config key: `cache-ttl = "300"`
 
-## Other
-
 ### `--no-update-check`
 
 Disable the automatic update check. Also honoured via `FIVE_CLIS_NO_UPDATE_CHECK=1`.
@@ -146,6 +144,30 @@ read from the same 24-hour cache as the version check, so turning this on
 costs no extra network round trip.
 
 Config key: `update-summary = false`
+
+## Diagnostics
+
+### `--debug-summary` / `--no-debug-summary`
+
+Print a run summary to stderr once the command finishes — elapsed time, how
+much work was done, cache state, and whatever rows the command itself adds:
+
+```text
+🐛 Debug summary
+  Total elapsed:   0.04s
+  Items processed: 1
+  Cache:           enabled, ttl 7200s
+  Greeted:         Steve
+```
+
+The last row comes from the `greet` command rather than the framework. Commands
+pass their own rows through `_finish_run(settings, item_count=..., extra=...)`,
+which is where a scaffolded CLI adds request counts, rate-limit headroom, or
+bytes transferred.
+
+Config key: `debug-summary = false`
+
+## Other
 
 ### `--version`
 

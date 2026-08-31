@@ -433,3 +433,64 @@ def test_easter_eggs_go_to_stderr(quiet_updates):
     )
     assert "Secret Burger Recipe" in result.output
     assert "Secret Burger Recipe" not in result.stdout
+
+
+# ── Debug summary ──────────────────────────────────────────────────────────
+
+
+def test_no_debug_summary_by_default(quiet_updates):
+    result = _invoke("greet", "--name", "x")
+    assert "Debug summary" not in result.output
+
+
+def test_debug_summary_reports_timing_and_work(quiet_updates):
+    result = _invoke("--debug-summary", "greet", "--name", "x")
+    assert result.exit_code == 0
+    assert "🐛 Debug summary" in result.output
+    assert "Total elapsed:" in result.output
+    assert "Items processed: 1" in result.output
+
+
+def test_debug_summary_reports_cache_state(quiet_updates):
+    off = _invoke("--debug-summary", "greet", "--name", "x")
+    assert re.search(r"Cache:\s+disabled", off.output)
+    on = _invoke("--debug-summary", "--cache", "--cache-ttl", "2h", "greet")
+    assert re.search(r"Cache:\s+enabled, ttl 7200s", on.output)
+
+
+def test_debug_summary_includes_command_supplied_rows(quiet_updates):
+    result = _invoke("--debug-summary", "greet", "--name", "Ada")
+    assert "Greeted:" in result.output
+    assert "Ada" in result.output
+
+
+def test_debug_summary_rows_are_aligned(quiet_updates):
+    result = _invoke("--debug-summary", "greet", "--name", "x")
+    # Labels differ in width, so it is the value column that must line up.
+    # Only the summary block counts — greet prints its own indented lines.
+    lines = result.output.splitlines()
+    body = lines[next(i for i, ln in enumerate(lines) if "Debug summary" in ln) + 1 :]
+    matches = [re.match(r"^ {2}(.+?):\s+(\S)", ln) for ln in body]
+    value_columns = {m.start(2) for m in matches if m}
+    assert len(value_columns) == 1, result.output
+
+
+def test_debug_summary_reads_from_the_config_file(quiet_updates, tmp_path):
+    cfg = tmp_path / "config.toml"
+    cfg.write_text("debug-summary = true\n")
+    result = _invoke("--config", str(cfg), "greet", "--name", "x")
+    assert "🐛 Debug summary" in result.output
+
+
+def test_no_debug_summary_flag_beats_the_config_file(quiet_updates, tmp_path):
+    cfg = tmp_path / "config.toml"
+    cfg.write_text("debug-summary = true\n")
+    result = _invoke("--config", str(cfg), "--no-debug-summary", "greet", "--name", "x")
+    assert "Debug summary" not in result.output
+
+
+def test_debug_summary_goes_to_stderr(quiet_updates):
+    runner = CliRunner()
+    result = runner.invoke(main, ["--debug-summary", "greet", "--name", "x"])
+    assert "Debug summary" in result.output
+    assert "Debug summary" not in result.stdout
