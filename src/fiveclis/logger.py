@@ -4,6 +4,11 @@ from pathlib import Path
 from .constants import APP_NAME, LOG_FILENAME
 from .xdg import get_state_dir
 
+__all__ = [
+    "configure",
+    "logger",
+]
+
 
 def _get_log_path() -> Path:
     return get_state_dir() / LOG_FILENAME

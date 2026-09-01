@@ -18,27 +18,48 @@ from pathlib import Path
 import click
 
 from .constants import (
-    _DIWALI,
-    _EID_AL_ADHA,
-    _EID_AL_FITR,
-    _HANUKKAH_START,
-    _HOLI,
-    _MID_AUTUMN,
-    _PASSOVER_START,
-    _ROSH_HASHANAH,
-    _SUKKOT_START,
     BIRTHDAY,
     BIRTHDAY_NAME,
     BURGER_RECIPES,
     CAKE_RECIPES,
     CHRISTMAS,
+    DIWALI,
+    EID_AL_ADHA,
+    EID_AL_FITR,
+    HANUKKAH_START,
+    HOLI_DATES,
     HOLI_RAINBOW,
+    MID_AUTUMN,
+    PASSOVER_START,
     PRIDE_RAINBOW,
+    ROSH_HASHANAH,
     SEASONAL_PALETTES,
+    SUKKOT_START,
 )
 from .fsutil import atomic_write_text
 from .logger import logger
 from .xdg import get_state_dir
+
+__all__ = [
+    "CALENDARS",
+    "CALENDAR_NAMES",
+    "THEMES",
+    "THEME_NAMES",
+    "Theme",
+    "apply_seasonal_colour",
+    "colour_grade_number",
+    "echo_err",
+    "generate_terminal_url_anchor",
+    "get_random_burger_recipe",
+    "get_random_cake_recipe",
+    "get_theme",
+    "has_shown_holiday_gift",
+    "is_birthday",
+    "is_christmas",
+    "mark_holiday_gift_shown",
+    "render_burger_recipe",
+    "render_cake_recipe",
+]
 
 _RESET = "\033[0m"
 
@@ -253,35 +274,35 @@ def _east_asian_calendar(today: datetime.date) -> "str | list[str] | None":
             return SEASONAL_PALETTES["lny"]
     except ValueError:
         pass
-    if _in_holiday_window(today, _MID_AUTUMN, days=2):
+    if _in_holiday_window(today, MID_AUTUMN, days=2):
         return SEASONAL_PALETTES["yellow"]
     return None
 
 
 def _hindu_calendar(today: datetime.date) -> "str | list[str] | None":
-    if _in_holiday_window(today, _DIWALI, days=5):
+    if _in_holiday_window(today, DIWALI, days=5):
         return SEASONAL_PALETTES["gold"]
-    if _in_holiday_window(today, _HOLI, days=2):
+    if _in_holiday_window(today, HOLI_DATES, days=2):
         return HOLI_RAINBOW
     return None
 
 
 def _islamic_calendar(today: datetime.date) -> "str | list[str] | None":
-    if _in_holiday_window(today, _EID_AL_FITR, days=3):
+    if _in_holiday_window(today, EID_AL_FITR, days=3):
         return SEASONAL_PALETTES["green"]
-    if _in_holiday_window(today, _EID_AL_ADHA, days=3):
+    if _in_holiday_window(today, EID_AL_ADHA, days=3):
         return SEASONAL_PALETTES["green"]
     return None
 
 
 def _jewish_calendar(today: datetime.date) -> "str | list[str] | None":
-    if _in_holiday_window(today, _HANUKKAH_START, days=8):
+    if _in_holiday_window(today, HANUKKAH_START, days=8):
         return SEASONAL_PALETTES["blue"]
-    if _in_holiday_window(today, _ROSH_HASHANAH, days=2):
+    if _in_holiday_window(today, ROSH_HASHANAH, days=2):
         return SEASONAL_PALETTES["gold"]
-    if _in_holiday_window(today, _PASSOVER_START, days=7):
+    if _in_holiday_window(today, PASSOVER_START, days=7):
         return SEASONAL_PALETTES["spring_green"]
-    if _in_holiday_window(today, _SUKKOT_START, days=7):
+    if _in_holiday_window(today, SUKKOT_START, days=7):
         return SEASONAL_PALETTES["orange"]
     return None
 
@@ -289,7 +310,7 @@ def _jewish_calendar(today: datetime.date) -> "str | list[str] | None":
 def _sikh_calendar(today: datetime.date) -> "str | list[str] | None":
     if today.month == 4 and today.day == 13:
         return SEASONAL_PALETTES["spring_green"]
-    if _in_holiday_window(today, _DIWALI, days=5):
+    if _in_holiday_window(today, DIWALI, days=5):
         return SEASONAL_PALETTES["gold"]
     return None
 
