@@ -28,6 +28,12 @@ _DEFAULT_CONFIG_CONTENT = """\
 # Equivalent to: --theme <name>
 # theme = "default"
 
+# Disable all ANSI colour output.
+# Also honoured via the FIVE_CLIS_NO_COLOUR environment variable, set to any
+# non-empty value.
+# Equivalent to: --no-colour
+# no-colour = false
+
 # ----- Seasonal colours -----
 
 # Apply seasonal ANSI colours based on the current date.

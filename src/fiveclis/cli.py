@@ -52,6 +52,21 @@ _CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 _CONFIG_FREE_COMMANDS = frozenset({"completions", "update"})
 
 
+def _env_flag_is_set(name: str) -> bool:
+    """Report whether an environment variable is set to any non-empty value.
+
+    This is the no-color.org convention: presence is the signal and the value
+    is deliberately ignored, so ``FIVE_CLIS_NO_COLOUR=0`` disables colour just
+    as ``=1`` does.
+
+    Click's ``envvar=`` on a boolean flag cannot express this. It routes the
+    value through the BOOL converter, so ``=false`` reads as "leave it on" —
+    the opposite of the spec — and an unrecognised value aborts the run
+    outright. A typo in a shell profile should be ignored, not fatal.
+    """
+    return bool(os.environ.get(name))
+
+
 def _resolved(flag_value, cfg: dict, key: str, default):
     """Resolve an option: CLI flag beats config file beats *default*."""
     if flag_value is not None:
@@ -92,8 +107,14 @@ def _resolved(flag_value, cfg: dict, key: str, default):
     "no_colour",
     is_flag=True,
     default=False,
-    envvar=f"{ENVVAR_PREFIX}_NO_COLOUR",
-    help="Disable all ANSI colour output.",
+    # No envvar= here: Click would route FIVE_CLIS_NO_COLOUR through its BOOL
+    # converter, so unrecognised values abort the run. Resolved by presence in
+    # the callback instead — see _env_flag_is_set.
+    help=(
+        "Disable all ANSI colour output."
+        f" Also honoured via {ENVVAR_PREFIX}_NO_COLOUR, set to any"
+        " non-empty value."
+    ),
 )
 # ── Caching ─────────────────────────────────────────────────────────────────
 @click.option(
@@ -113,8 +134,12 @@ def _resolved(flag_value, cfg: dict, key: str, default):
     "--no-update-check",
     is_flag=True,
     default=False,
-    envvar=f"{ENVVAR_PREFIX}_NO_UPDATE_CHECK",
-    help="Disable the automatic update check.",
+    # No envvar= here — see the note on --no-colour.
+    help=(
+        "Disable the automatic update check."
+        f" Also honoured via {ENVVAR_PREFIX}_NO_UPDATE_CHECK, set to any"
+        " non-empty value."
+    ),
 )
 @click.option(
     "--update-summary/--no-update-summary",
@@ -170,6 +195,14 @@ def main(
     started_at = time.monotonic()
     configure_logging()
 
+    # Resolved by presence, not parsed: see _env_flag_is_set. Composed with
+    # the flag, and for the update check with the config key below too, so any
+    # one of them switching it off is enough and none can switch it back on.
+    no_colour = no_colour or _env_flag_is_set(f"{ENVVAR_PREFIX}_NO_COLOUR")
+    no_update_check = no_update_check or _env_flag_is_set(
+        f"{ENVVAR_PREFIX}_NO_UPDATE_CHECK"
+    )
+
     # completions and update must stay usable when the config file is broken.
     # The shell runs the completion script on every tab-press, so a config error
     # would spew into the user's prompt; and if a bad config could block update,
@@ -193,7 +226,7 @@ def main(
         seasonal_calendar=_resolved(
             seasonal_calendar, cfg, "seasonal-calendar", "western"
         ),
-        colour=not no_colour,
+        colour=not (no_colour or cfg.get("no-colour", False)),
         cache_enabled=_resolved(cache_enabled, cfg, "cache", False),
         cache_ttl=ttl,
         update_check=not (no_update_check or cfg.get("no-update-check", False)),
