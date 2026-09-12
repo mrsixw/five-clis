@@ -8,6 +8,13 @@ from .fsutil import atomic_write_text
 from .logger import logger
 from .xdg import get_cache_dir
 
+__all__ = [
+    "clear_cache",
+    "parse_ttl",
+    "read_cache",
+    "write_cache",
+]
+
 
 def parse_ttl(value: str | int) -> int:
     """Parse a TTL value into seconds.

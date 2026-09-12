@@ -32,15 +32,15 @@ def test_ui_constants():
 
 def test_holiday_tables_cover_the_current_decade():
     tables = [
-        constants._DIWALI,
-        constants._EID_AL_ADHA,
-        constants._EID_AL_FITR,
-        constants._HANUKKAH_START,
-        constants._HOLI,
-        constants._MID_AUTUMN,
-        constants._PASSOVER_START,
-        constants._ROSH_HASHANAH,
-        constants._SUKKOT_START,
+        constants.DIWALI,
+        constants.EID_AL_ADHA,
+        constants.EID_AL_FITR,
+        constants.HANUKKAH_START,
+        constants.HOLI_DATES,
+        constants.MID_AUTUMN,
+        constants.PASSOVER_START,
+        constants.ROSH_HASHANAH,
+        constants.SUKKOT_START,
     ]
     for table in tables:
         assert set(range(2024, 2046)) <= set(table)
@@ -49,7 +49,7 @@ def test_holiday_tables_cover_the_current_decade():
 def test_holiday_table_entries_are_valid_dates():
     import datetime
 
-    for table in (constants._DIWALI, constants._HOLI, constants._ROSH_HASHANAH):
+    for table in (constants.DIWALI, constants.HOLI_DATES, constants.ROSH_HASHANAH):
         for year, (month, day) in table.items():
             datetime.date(year, month, day)  # raises ValueError if bogus
 

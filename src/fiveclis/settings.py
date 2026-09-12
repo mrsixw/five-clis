@@ -11,6 +11,10 @@ from dataclasses import dataclass, field
 
 from .ui import Theme, apply_seasonal_colour
 
+__all__ = [
+    "Settings",
+]
+
 
 @dataclass
 class Settings:

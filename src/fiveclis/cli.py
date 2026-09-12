@@ -46,13 +46,21 @@ from .ui import (
 )
 from .updater import UpdateStatus, check_for_update, perform_update
 
+__all__ = [
+    "CONFIG_FREE_COMMANDS",
+    "env_flag_is_set",
+    "finish_run",
+    "main",
+    "resolve_option",
+]
+
 _CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
 # Subcommands that must run before, and independently of, config resolution.
-_CONFIG_FREE_COMMANDS = frozenset({"completions", "update"})
+CONFIG_FREE_COMMANDS = frozenset({"completions", "update"})
 
 
-def _env_flag_is_set(name: str) -> bool:
+def env_flag_is_set(name: str) -> bool:
     """Report whether an environment variable is set to any non-empty value.
 
     This is the no-color.org convention: presence is the signal and the value
@@ -67,7 +75,7 @@ def _env_flag_is_set(name: str) -> bool:
     return bool(os.environ.get(name))
 
 
-def _resolved(flag_value, cfg: dict, key: str, default):
+def resolve_option(flag_value, cfg: dict, key: str, default):
     """Resolve an option: CLI flag beats config file beats *default*."""
     if flag_value is not None:
         return flag_value
@@ -109,7 +117,7 @@ def _resolved(flag_value, cfg: dict, key: str, default):
     default=False,
     # No envvar= here: Click would route FIVE_CLIS_NO_COLOUR through its BOOL
     # converter, so unrecognised values abort the run. Resolved by presence in
-    # the callback instead — see _env_flag_is_set.
+    # the callback instead — see env_flag_is_set.
     help=(
         "Disable all ANSI colour output."
         f" Also honoured via {ENVVAR_PREFIX}_NO_COLOUR, set to any"
@@ -195,11 +203,11 @@ def main(
     started_at = time.monotonic()
     configure_logging()
 
-    # Resolved by presence, not parsed: see _env_flag_is_set. Composed with
+    # Resolved by presence, not parsed: see env_flag_is_set. Composed with
     # the flag, and for the update check with the config key below too, so any
     # one of them switching it off is enough and none can switch it back on.
-    no_colour = no_colour or _env_flag_is_set(f"{ENVVAR_PREFIX}_NO_COLOUR")
-    no_update_check = no_update_check or _env_flag_is_set(
+    no_colour = no_colour or env_flag_is_set(f"{ENVVAR_PREFIX}_NO_COLOUR")
+    no_update_check = no_update_check or env_flag_is_set(
         f"{ENVVAR_PREFIX}_NO_UPDATE_CHECK"
     )
 
@@ -207,31 +215,33 @@ def main(
     # The shell runs the completion script on every tab-press, so a config error
     # would spew into the user's prompt; and if a bad config could block update,
     # there would be no way to install the release that fixes it.
-    if ctx.invoked_subcommand in _CONFIG_FREE_COMMANDS:
+    if ctx.invoked_subcommand in CONFIG_FREE_COMMANDS:
         return
 
     try:
         cfg = load_config(config_path)
-        ttl = parse_ttl(_resolved(cache_ttl, cfg, "cache-ttl", DEFAULT_CACHE_TTL))
+        ttl = parse_ttl(resolve_option(cache_ttl, cfg, "cache-ttl", DEFAULT_CACHE_TTL))
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
 
-    theme_name = _resolved(theme, cfg, "theme", "default")
+    theme_name = resolve_option(theme, cfg, "theme", "default")
     ctx.obj = Settings(
         cfg=cfg,
         config_path=config_path,
         theme_name=theme_name,
         theme=get_theme(theme_name),
-        seasonal_colours=_resolved(seasonal_colours, cfg, "seasonal-colours", True),
-        seasonal_calendar=_resolved(
+        seasonal_colours=resolve_option(
+            seasonal_colours, cfg, "seasonal-colours", True
+        ),
+        seasonal_calendar=resolve_option(
             seasonal_calendar, cfg, "seasonal-calendar", "western"
         ),
         colour=not (no_colour or cfg.get("no-colour", False)),
-        cache_enabled=_resolved(cache_enabled, cfg, "cache", False),
+        cache_enabled=resolve_option(cache_enabled, cfg, "cache", False),
         cache_ttl=ttl,
         update_check=not (no_update_check or cfg.get("no-update-check", False)),
-        update_summary=_resolved(update_summary, cfg, "update-summary", False),
-        debug_summary=_resolved(debug_summary, cfg, "debug-summary", False),
+        update_summary=resolve_option(update_summary, cfg, "update-summary", False),
+        debug_summary=resolve_option(debug_summary, cfg, "debug-summary", False),
         burger=burger,
         cake=cake,
         started_at=started_at,
@@ -320,7 +330,7 @@ def _print_debug_summary(
     click.echo("\n".join(lines), err=True, color=settings.colour)
 
 
-def _finish_run(
+def finish_run(
     settings: Settings,
     item_count: int = 0,
     extra: dict[str, str] | None = None,
@@ -373,7 +383,7 @@ def greet(settings: Settings, name: str | None):
 
     # item_count and the extra rows are the demo's stand-in for whatever your
     # command actually did — swap them for real counters.
-    _finish_run(settings, item_count=1, extra={"Greeted": name})
+    finish_run(settings, item_count=1, extra={"Greeted": name})
 
 
 # ── Config management ───────────────────────────────────────────────────────
