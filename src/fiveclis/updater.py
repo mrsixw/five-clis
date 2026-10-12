@@ -21,6 +21,14 @@ from .fsutil import atomic_write_stream, atomic_write_text
 from .logger import logger
 from .xdg import get_cache_dir
 
+__all__ = [
+    "UpdateStatus",
+    "check_for_update",
+    "get_latest_version",
+    "get_release_summary",
+    "perform_update",
+]
+
 
 class UpdateStatus(Enum):
     """Outcome of a :func:`perform_update` attempt.

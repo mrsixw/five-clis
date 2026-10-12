@@ -180,7 +180,7 @@ much work was done, cache state, and whatever rows the command itself adds:
 ```
 
 The last row comes from the `greet` command rather than the framework. Commands
-pass their own rows through `_finish_run(settings, item_count=..., extra=...)`,
+pass their own rows through `finish_run(settings, item_count=..., extra=...)`,
 which is where a scaffolded CLI adds request counts, rate-limit headroom, or
 bytes transferred.
 

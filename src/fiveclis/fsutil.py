@@ -3,6 +3,11 @@ import secrets
 from collections.abc import Iterable
 from pathlib import Path
 
+__all__ = [
+    "atomic_write_stream",
+    "atomic_write_text",
+]
+
 
 def _reserve_temp(path: Path, create_mode: int) -> tuple[int, Path]:
     """Create an exclusive temp file alongside *path*; return its fd and path.
