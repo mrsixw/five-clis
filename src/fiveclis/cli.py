@@ -15,6 +15,7 @@ import os
 import random
 import shutil
 import sys
+import time
 from enum import StrEnum, auto
 
 import click
@@ -45,13 +46,36 @@ from .ui import (
 )
 from .updater import UpdateStatus, check_for_update, perform_update
 
+__all__ = [
+    "CONFIG_FREE_COMMANDS",
+    "env_flag_is_set",
+    "finish_run",
+    "main",
+    "resolve_option",
+]
+
 _CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
 # Subcommands that must run before, and independently of, config resolution.
-_CONFIG_FREE_COMMANDS = frozenset({"completions", "update"})
+CONFIG_FREE_COMMANDS = frozenset({"completions", "update"})
 
 
-def _resolved(flag_value, cfg: dict, key: str, default):
+def env_flag_is_set(name: str) -> bool:
+    """Report whether an environment variable is set to any non-empty value.
+
+    This is the no-color.org convention: presence is the signal and the value
+    is deliberately ignored, so ``FIVE_CLIS_NO_COLOUR=0`` disables colour just
+    as ``=1`` does.
+
+    Click's ``envvar=`` on a boolean flag cannot express this. It routes the
+    value through the BOOL converter, so ``=false`` reads as "leave it on" —
+    the opposite of the spec — and an unrecognised value aborts the run
+    outright. A typo in a shell profile should be ignored, not fatal.
+    """
+    return bool(os.environ.get(name))
+
+
+def resolve_option(flag_value, cfg: dict, key: str, default):
     """Resolve an option: CLI flag beats config file beats *default*."""
     if flag_value is not None:
         return flag_value
@@ -91,8 +115,14 @@ def _resolved(flag_value, cfg: dict, key: str, default):
     "no_colour",
     is_flag=True,
     default=False,
-    envvar=f"{ENVVAR_PREFIX}_NO_COLOUR",
-    help="Disable all ANSI colour output.",
+    # No envvar= here: Click would route FIVE_CLIS_NO_COLOUR through its BOOL
+    # converter, so unrecognised values abort the run. Resolved by presence in
+    # the callback instead — see env_flag_is_set.
+    help=(
+        "Disable all ANSI colour output."
+        f" Also honoured via {ENVVAR_PREFIX}_NO_COLOUR, set to any"
+        " non-empty value."
+    ),
 )
 # ── Caching ─────────────────────────────────────────────────────────────────
 @click.option(
@@ -112,13 +142,23 @@ def _resolved(flag_value, cfg: dict, key: str, default):
     "--no-update-check",
     is_flag=True,
     default=False,
-    envvar=f"{ENVVAR_PREFIX}_NO_UPDATE_CHECK",
-    help="Disable the automatic update check.",
+    # No envvar= here — see the note on --no-colour.
+    help=(
+        "Disable the automatic update check."
+        f" Also honoured via {ENVVAR_PREFIX}_NO_UPDATE_CHECK, set to any"
+        " non-empty value."
+    ),
 )
 @click.option(
     "--update-summary/--no-update-summary",
     default=None,
     help="Include release highlights in the update notice.",
+)
+# ── Diagnostics ─────────────────────────────────────────────────────────────
+@click.option(
+    "--debug-summary/--no-debug-summary",
+    default=None,
+    help="Print a run summary (timing, work done) to stderr when finished.",
 )
 # ── Easter eggs ─────────────────────────────────────────────────────────────
 @click.option(
@@ -147,6 +187,7 @@ def main(
     cache_ttl,
     no_update_check,
     update_summary,
+    debug_summary,
     burger,
     cake,
 ):
@@ -158,38 +199,52 @@ def main(
 
     Running with no subcommand is equivalent to ``five-clis greet``.
     """
+    # Before anything else, so the elapsed row covers config resolution too.
+    started_at = time.monotonic()
     configure_logging()
+
+    # Resolved by presence, not parsed: see env_flag_is_set. Composed with
+    # the flag, and for the update check with the config key below too, so any
+    # one of them switching it off is enough and none can switch it back on.
+    no_colour = no_colour or env_flag_is_set(f"{ENVVAR_PREFIX}_NO_COLOUR")
+    no_update_check = no_update_check or env_flag_is_set(
+        f"{ENVVAR_PREFIX}_NO_UPDATE_CHECK"
+    )
 
     # completions and update must stay usable when the config file is broken.
     # The shell runs the completion script on every tab-press, so a config error
     # would spew into the user's prompt; and if a bad config could block update,
     # there would be no way to install the release that fixes it.
-    if ctx.invoked_subcommand in _CONFIG_FREE_COMMANDS:
+    if ctx.invoked_subcommand in CONFIG_FREE_COMMANDS:
         return
 
     try:
         cfg = load_config(config_path)
-        ttl = parse_ttl(_resolved(cache_ttl, cfg, "cache-ttl", DEFAULT_CACHE_TTL))
+        ttl = parse_ttl(resolve_option(cache_ttl, cfg, "cache-ttl", DEFAULT_CACHE_TTL))
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
 
-    theme_name = _resolved(theme, cfg, "theme", "default")
+    theme_name = resolve_option(theme, cfg, "theme", "default")
     ctx.obj = Settings(
         cfg=cfg,
         config_path=config_path,
         theme_name=theme_name,
         theme=get_theme(theme_name),
-        seasonal_colours=_resolved(seasonal_colours, cfg, "seasonal-colours", True),
-        seasonal_calendar=_resolved(
+        seasonal_colours=resolve_option(
+            seasonal_colours, cfg, "seasonal-colours", True
+        ),
+        seasonal_calendar=resolve_option(
             seasonal_calendar, cfg, "seasonal-calendar", "western"
         ),
-        colour=not no_colour,
-        cache_enabled=_resolved(cache_enabled, cfg, "cache", False),
+        colour=not (no_colour or cfg.get("no-colour", False)),
+        cache_enabled=resolve_option(cache_enabled, cfg, "cache", False),
         cache_ttl=ttl,
         update_check=not (no_update_check or cfg.get("no-update-check", False)),
-        update_summary=_resolved(update_summary, cfg, "update-summary", False),
+        update_summary=resolve_option(update_summary, cfg, "update-summary", False),
+        debug_summary=resolve_option(debug_summary, cfg, "debug-summary", False),
         burger=burger,
         cake=cake,
+        started_at=started_at,
     )
 
     if ctx.invoked_subcommand is None:
@@ -248,7 +303,38 @@ def _serve_easter_eggs(settings: Settings) -> None:
         )
 
 
-def _finish_run(settings: Settings) -> None:
+def _print_debug_summary(
+    settings: Settings, item_count: int, extra: dict[str, str] | None = None
+) -> None:
+    """Print a run summary to stderr: timing, work done, and app-specific rows.
+
+    *extra* is where a scaffolded CLI adds its own rows — request counts, rate
+    limit headroom, bytes transferred. breakfast's equivalent is spelled
+    ``--api-stats`` and fills this slot with REST and GraphQL counters; here
+    the flag is named for what it prints, since a template has no API to count.
+    """
+    elapsed = time.monotonic() - settings.started_at
+    rows = {
+        "Total elapsed": f"{elapsed:.2f}s",
+        "Items processed": str(item_count),
+        "Cache": (
+            f"enabled, ttl {settings.cache_ttl}s"
+            if settings.cache_enabled
+            else "disabled"
+        ),
+        **(extra or {}),
+    }
+    width = max(len(label) for label in rows)
+    lines = [click.style("🐛 Debug summary", fg="cyan", bold=True)]
+    lines += [f"  {label + ':':<{width + 1}} {value}" for label, value in rows.items()]
+    click.echo("\n".join(lines), err=True, color=settings.colour)
+
+
+def finish_run(
+    settings: Settings,
+    item_count: int = 0,
+    extra: dict[str, str] | None = None,
+) -> None:
     """Run the end-of-invocation chores every command shares.
 
     Call this last from any command that produces user-facing output, so the
@@ -256,6 +342,8 @@ def _finish_run(settings: Settings) -> None:
     """
     _notify_update(settings)
     _serve_easter_eggs(settings)
+    if settings.debug_summary:
+        _print_debug_summary(settings, item_count, extra)
 
 
 # ── Greeting (demo command — replace with your own) ─────────────────────────
@@ -293,7 +381,9 @@ def greet(settings: Settings, name: str | None):
         for i, item in enumerate(items):
             click.echo(settings.theme.apply_cycle(f"  • {item}", i))
 
-    _finish_run(settings)
+    # item_count and the extra rows are the demo's stand-in for whatever your
+    # command actually did — swap them for real counters.
+    finish_run(settings, item_count=1, extra={"Greeted": name})
 
 
 # ── Config management ───────────────────────────────────────────────────────

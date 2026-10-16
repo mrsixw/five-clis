@@ -99,7 +99,13 @@ Config key: `seasonal-calendar = "western"`
 
 ### `--no-colour`
 
-Disable all ANSI colour output. Also honoured via `FIVE_CLIS_NO_COLOUR=1`.
+Disable all ANSI colour output. Also honoured via the `FIVE_CLIS_NO_COLOUR`
+environment variable, set to any non-empty value.
+
+Config key: `no-colour = false`
+
+Any one of the flag, the environment variable, or the config key switching
+colour off is enough; none of them can switch it back on.
 
 ## Config options
 
@@ -122,13 +128,24 @@ How long to cache results. Accepts seconds (`300`), or suffixed strings (`5m`, `
 
 Config key: `cache-ttl = "300"`
 
-## Other
-
 ### `--no-update-check`
 
-Disable the automatic update check. Also honoured via `FIVE_CLIS_NO_UPDATE_CHECK=1`.
+Disable the automatic update check. Also honoured via the
+`FIVE_CLIS_NO_UPDATE_CHECK` environment variable, set to any non-empty value.
 
 Config key: `no-update-check = false`
+
+Any one of the flag, the environment variable, or the config key switching the
+check off is enough; none of them can switch it back on.
+
+### Environment variable semantics
+
+Both `FIVE_CLIS_NO_COLOUR` and `FIVE_CLIS_NO_UPDATE_CHECK` are resolved by
+**presence**, following the [no-color.org](https://no-color.org) convention:
+any non-empty value switches the behaviour off, and only unset or empty leaves
+it on. The value is never parsed, so `=0` and `=false` still disable — and a
+stray `FIVE_CLIS_NO_COLOUR=maybe` in a shell profile is harmless rather than
+fatal.
 
 ### `--update-summary` / `--no-update-summary`
 
@@ -146,6 +163,30 @@ read from the same 24-hour cache as the version check, so turning this on
 costs no extra network round trip.
 
 Config key: `update-summary = false`
+
+## Diagnostics
+
+### `--debug-summary` / `--no-debug-summary`
+
+Print a run summary to stderr once the command finishes — elapsed time, how
+much work was done, cache state, and whatever rows the command itself adds:
+
+```text
+🐛 Debug summary
+  Total elapsed:   0.04s
+  Items processed: 1
+  Cache:           enabled, ttl 7200s
+  Greeted:         Steve
+```
+
+The last row comes from the `greet` command rather than the framework. Commands
+pass their own rows through `finish_run(settings, item_count=..., extra=...)`,
+which is where a scaffolded CLI adds request counts, rate-limit headroom, or
+bytes transferred.
+
+Config key: `debug-summary = false`
+
+## Other
 
 ### `--version`
 
