@@ -11,6 +11,7 @@ rule; the rule is the more valuable half.
 | Unit | `tests/test_*.py` | no | `make test` |
 | CLI | `tests/test_cli.py` | no (in-process `CliRunner`) | `make test` |
 | End-to-end | `tests/e2e/` | **yes**, the built binary as a subprocess | `make e2e` |
+| Shell | `tests/bats/` | no (the shell scripts, collaborators stubbed) | `make bats` |
 
 ### The rule
 
