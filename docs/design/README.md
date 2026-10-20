@@ -2,6 +2,6 @@
 
 Technical designs for planned or completed features.
 
-| Document      | Description                                    |
-| ------------- | ---------------------------------------------- |
-| *(none yet)*  | Add design docs here as features are designed  |
+| Document                 | Description                                                           |
+| ------------------------ | --------------------------------------------------------------------- |
+| [testing.md](testing.md) | Test layers, the rule that separates them, and the end-to-end harness |

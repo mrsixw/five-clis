@@ -35,6 +35,7 @@
 - `make spell` — spell check, the same `typos` version CI runs
 - `make format` — auto-fix lint and formatting
 - `make build` — build a shiv executable
+- `make e2e` — build, then run the end-to-end suite against the built binary
 
 ## Module API contract
 - A leading `_` means "internal to this module". Anything a sibling module
@@ -66,9 +67,30 @@ that insist on their own filename get a symlink instead of a copy.
 On Windows, git checks symlinks out as plain text files containing the target
 path unless `core.symlinks=true` and Developer Mode are both enabled.
 
-## Testing the shell scripts
-- `tests/bats/` covers `install.sh` and everything in `utils/`. Each test runs the real script as a subprocess with `gh`, `git`, `curl`, `tar` and `install` stubbed on `PATH` and `HOME` redirected into a temporary directory. Offline, and safe to run anywhere.
-- **If it fakes any part of the system under test, it is a unit test** — these stubs qualify, which is why the suite lives in `tests/`.
+## Testing
+Three layers. Choose by what is under test, not by what is easiest to write.
+
+| Layer | Covers | Location | Command |
+| --- | --- | --- | --- |
+| Unit | Python code, in process | `tests/test_*.py` | `make test` |
+| End-to-end | The built binary, seen from outside | `tests/e2e/` | `make e2e` |
+| Shell | Every shell script | `tests/bats/` | `make bats` |
+
+### Unit tests — pytest
+- Drive the code through its public boundary — the Click command through `CliRunner`, or a module's public functions — and fake only what lies beyond it: HTTP (`requests-mock`), the clock (`freezegun`), the filesystem (`tmp_path`), the environment (`monkeypatch.setenv`). Never mock the package's own modules, config loader or private functions. This is the `boundary-testing` skill's rule.
+- Assert on what a caller can observe: exit code, output, files written, requests sent.
+- **If it fakes any part of the system under test, it is a unit test** and belongs here, not in `tests/e2e/`.
+
+### End-to-end tests — behavioural
+- Gherkin `.feature` scenarios that describe what a user sees. Each runs the **built binary as a subprocess** with real arguments, real config files and real XDG paths, and fakes nothing — integration tests with real data.
+- Add a scenario only for what the real binary alone can prove: exit codes, stdout-versus-stderr, packaging, files on disk. Everything else is a unit test in `tests/test_cli.py`.
+- Offline by design: the harness disables the update check. A CLI that needs live calls adds a `live` marker gated on a token.
+- The harness reads `APP_NAME`, `BINARY_NAME` and `ENVVAR_PREFIX` from `constants.py`. Rewrite the `.feature` files for your CLI; leave `conftest.py` and `steps/` alone.
+- Full detail: [docs/design/testing.md](docs/design/testing.md).
+
+### Shell script tests — bats
+- Anything that is a shell script is tested with bats: `install.sh` and everything in `utils/`. A new script gets its `.bats` file in the same change.
+- Each test runs the real script as a subprocess with `gh`, `git`, `curl`, `tar` and `install` stubbed on `PATH` and `HOME` redirected into a temporary directory. Offline, and safe to run anywhere.
 - The helper reads `BINARY_NAME` from `constants.py`, so a CLI generated from this template inherits the suite working. Adapt the assertions in `install.bats` to your installer's messages; leave `helpers/common.bash` alone.
 - Stubs record their arguments: assert *what the script asked for*, not only what it printed. `assert_called_arg` matches a whole argument, so a quoting bug cannot hide behind a flattened command line.
 
