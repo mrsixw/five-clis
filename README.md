@@ -64,6 +64,7 @@ make uninstall PREFIX=$HOME/.local
 five-clis --help
 five-clis --theme rainbow
 five-clis greet --name Alice
+five-clis --table-style rounded_outline menu
 five-clis config init
 five-clis config show
 eval "$(five-clis completions bash)"
