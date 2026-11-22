@@ -5,6 +5,7 @@
 ```bash
 five-clis                       # same as: five-clis greet
 five-clis greet --name Alice
+five-clis menu                  # a demo table
 five-clis --theme rainbow
 five-clis --no-colour
 ```

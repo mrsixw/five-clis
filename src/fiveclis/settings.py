@@ -9,6 +9,7 @@ parameters.
 import time
 from dataclasses import dataclass, field
 
+from .constants import DEFAULT_TABLE_STYLE
 from .ui import Theme, apply_seasonal_colour
 
 __all__ = [
@@ -27,6 +28,8 @@ class Settings:
     seasonal_colours: bool = True
     seasonal_calendar: str = "western"
     colour: bool = True
+    #: A tabulate format name, one of ``constants.TABLE_STYLES``.
+    table_style: str = DEFAULT_TABLE_STYLE
     cache_enabled: bool = False
     cache_ttl: int = 300
     update_check: bool = True

@@ -27,10 +27,14 @@ from .constants import (
     APP_NAME,
     BINARY_NAME,
     DEFAULT_CACHE_TTL,
+    DEFAULT_TABLE_STYLE,
     ENVVAR_PREFIX,
+    MENU,
+    TABLE_STYLES,
 )
 from .logger import configure as configure_logging
 from .settings import Settings
+from .tables import render_table
 from .ui import (
     CALENDAR_NAMES,
     THEME_NAMES,
@@ -98,6 +102,12 @@ def resolve_option(flag_value, cfg: dict, key: str, default):
     type=click.Choice(THEME_NAMES, case_sensitive=False),
     default=None,
     help=f"Colour theme. Choices: {', '.join(THEME_NAMES)}.",
+)
+@click.option(
+    "--table-style",
+    type=click.Choice(TABLE_STYLES),
+    default=None,
+    help=f"How tables are drawn. Default: {DEFAULT_TABLE_STYLE}.",
 )
 @click.option(
     "--seasonal-colours/--no-seasonal-colours",
@@ -180,6 +190,7 @@ def main(
     ctx,
     config_path,
     theme,
+    table_style,
     seasonal_colours,
     seasonal_calendar,
     no_colour,
@@ -221,6 +232,9 @@ def main(
     try:
         cfg = load_config(config_path)
         ttl = parse_ttl(resolve_option(cache_ttl, cfg, "cache-ttl", DEFAULT_CACHE_TTL))
+        style = _table_style(
+            resolve_option(table_style, cfg, "table-style", DEFAULT_TABLE_STYLE)
+        )
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
 
@@ -237,6 +251,7 @@ def main(
             seasonal_calendar, cfg, "seasonal-calendar", "western"
         ),
         colour=not (no_colour or cfg.get("no-colour", False)),
+        table_style=style,
         cache_enabled=resolve_option(cache_enabled, cfg, "cache", False),
         cache_ttl=ttl,
         update_check=not (no_update_check or cfg.get("no-update-check", False)),
@@ -249,6 +264,20 @@ def main(
 
     if ctx.invoked_subcommand is None:
         ctx.invoke(greet)
+
+
+def _table_style(name: str) -> str:
+    """Validate a table style that may have come from the config file.
+
+    The flag is checked by its ``click.Choice``; the config value is not, and
+    a typo there must fail with the choices rather than a tabulate traceback.
+    """
+    if name not in TABLE_STYLES:
+        raise ValueError(
+            f"Invalid table-style '{name}' in config. "
+            f"Choose from: {', '.join(TABLE_STYLES)}."
+        )
+    return name
 
 
 def _notify_update(settings: Settings) -> None:
@@ -384,6 +413,19 @@ def greet(settings: Settings, name: str | None):
     # item_count and the extra rows are the demo's stand-in for whatever your
     # command actually did — swap them for real counters.
     finish_run(settings, item_count=1, extra={"Greeted": name})
+
+
+@main.command()
+@click.pass_obj
+def menu(settings: Settings):
+    """List today's menu as a table (a demo of tables.render_table)."""
+    headers = ["ITEM", "DESCRIPTION"]
+    rows = [list(entry) for entry in MENU]
+    click.echo(
+        render_table(settings, headers, rows, shrink=headers.index("DESCRIPTION")),
+        color=settings.colour,
+    )
+    finish_run(settings, item_count=len(rows))
 
 
 # ── Config management ───────────────────────────────────────────────────────

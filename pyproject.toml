@@ -14,8 +14,9 @@ authors = [{ name = "Steve Williams" }]
 dependencies = [
   "click",
   "requests",
-  "tabulate",
+  "tabulate>=0.10,<0.11",
   "tomli; python_version < '3.11'",
+  "wcwidth>=0.8,<0.9",
 ]
 
 [project.scripts]

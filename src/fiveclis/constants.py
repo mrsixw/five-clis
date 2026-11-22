@@ -17,6 +17,7 @@ __all__ = [
     "CAKE_RECIPES",
     "CHRISTMAS",
     "DEFAULT_CACHE_TTL",
+    "DEFAULT_TABLE_STYLE",
     "DIWALI",
     "EID_AL_ADHA",
     "EID_AL_FITR",
@@ -25,6 +26,7 @@ __all__ = [
     "HOLI_DATES",
     "HOLI_RAINBOW",
     "LOG_FILENAME",
+    "MENU",
     "MID_AUTUMN",
     "PASSOVER_START",
     "PRIDE_RAINBOW",
@@ -32,6 +34,7 @@ __all__ = [
     "ROSH_HASHANAH",
     "SEASONAL_PALETTES",
     "SUKKOT_START",
+    "TABLE_STYLES",
     "TTL_SUFFIX_MAP",
     "UPDATE_CHECK_REPO",
     "VERSION_CACHE_FILENAME",
@@ -62,6 +65,27 @@ VERSION_CACHE_TTL_SECONDS = 86400  # 24 hours
 
 DEFAULT_CACHE_TTL = 300
 TTL_SUFFIX_MAP = {"s": 1, "m": 60, "h": 3600}
+
+# ── Tables ─────────────────────────────────────────────────────────────────
+
+#: The table styles ``--table-style`` accepts. Each is a tabulate format name
+#: and is passed straight through as ``tablefmt``. Every app built from this
+#: template offers the same set, so one setting reads the same everywhere.
+TABLE_STYLES = ("outline", "rounded_outline", "grid", "simple", "github", "plain")
+#: breakfast's style, so the sibling apps look alike out of the box.
+DEFAULT_TABLE_STYLE = "outline"
+
+#: What the ``menu`` demo command lists: (item, description).
+MENU = [
+    (
+        "Classic burger",
+        "Beef patty, cheddar, pickles, onion and house sauce in a toasted bun",
+    ),
+    ("Veggie burger", "Black bean patty, smoked paprika mayo, lettuce and tomato"),
+    ("Fries", "Skin-on and twice-cooked, with sea salt"),
+    ("Milkshake", "Vanilla, chocolate or strawberry, made with real ice cream"),
+    ("Lemonade", "Freshly squeezed and lightly sweetened, served over ice"),
+]
 
 # ── UI & theming ───────────────────────────────────────────────────────────
 

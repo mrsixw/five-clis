@@ -12,6 +12,12 @@ settings object — so new commands never need their own copies of these flags.
 The demo business command (also the default when no subcommand is given).
 Replace it with your own logic.
 
+### `menu`
+
+A second demo command: lists a small menu as a table, drawn through
+`tables.render_table` in the chosen [`--table-style`](#--table-style). Copy
+it when your command needs a table, then delete it.
+
 ### `config show`
 
 Print the resolved configuration.
@@ -64,6 +70,29 @@ five-clis --theme mono      # no colour
 ```
 
 Config key: `theme = "default"`
+
+### `--table-style`
+
+Choose how tables are drawn. Choices: `outline`, `rounded_outline`, `grid`,
+`simple`, `github`, `plain`. Default: `outline`, the same bordered style
+breakfast uses.
+
+Every app built from this template offers the same key and the same choices,
+so one style can be set everywhere. Each is a
+[tabulate](https://github.com/astanin/python-tabulate#table-format) format.
+
+```bash
+five-clis --table-style rounded_outline menu
+five-clis --table-style plain menu   # no borders
+```
+
+Rows are numbered, borders take the theme's muted colour, the header its
+accent in bold, and rows its primary colour. When a table is wider than the
+terminal, the column the command names (the description, in `menu`) is
+clipped with `…` to fit. Widths are measured in terminal cells, so emoji and
+other wide characters count double.
+
+Config key: `table-style = "outline"`
 
 ### `--seasonal-colours` / `--no-seasonal-colours`
 

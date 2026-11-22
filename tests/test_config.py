@@ -52,6 +52,7 @@ def test_write_default_config_creates_file(tmp_path, monkeypatch):
 
 def test_default_config_content_has_all_keys():
     assert "theme" in _DEFAULT_CONFIG_CONTENT
+    assert "table-style" in _DEFAULT_CONFIG_CONTENT
     assert "cache" in _DEFAULT_CONFIG_CONTENT
     assert "seasonal-colours" in _DEFAULT_CONFIG_CONTENT
     assert "no-update-check" in _DEFAULT_CONFIG_CONTENT

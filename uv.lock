@@ -177,6 +177,7 @@ dependencies = [
     { name = "click" },
     { name = "requests" },
     { name = "tabulate" },
+    { name = "wcwidth" },
 ]
 
 [package.optional-dependencies]
@@ -225,8 +226,9 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'lint'" },
     { name = "shiv", marker = "extra == 'build'" },
     { name = "shiv", marker = "extra == 'dev'" },
-    { name = "tabulate" },
+    { name = "tabulate", specifier = ">=0.10,<0.11" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
+    { name = "wcwidth", specifier = ">=0.8,<0.9" },
 ]
 provides-extras = ["test", "lint", "build", "dev"]
 
@@ -629,4 +631,13 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/53/0c/06f8b233b8fd13b9e5ee11424ef85419ba0d8ba0b3138bf360be2ff56953/urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c", size = 433602, upload-time = "2026-05-07T16:13:18.596Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7f/3e/5db95bcf282c52709639744ca2a8b149baccf648e39c8cc87553df9eae0c/urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897", size = 131087, upload-time = "2026-05-07T16:13:17.151Z" },
+]
+
+[[package]]
+name = "wcwidth"
+version = "0.8.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/66/55/6f6b20e3437c832ec6d9cb02ac7555046f2836a89d593530a5895420bf69/wcwidth-0.8.5.tar.gz", hash = "sha256:720336056169eac7744c5a84165d563cc6f569652615071cbfd575f131e7537f", size = 414244, upload-time = "2026-09-23T13:43:31.276Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2e/b6/138605bb73076873eb382840af4239127d197bbc3d43e7743e15e80278b0/wcwidth-0.8.5-py3-none-any.whl", hash = "sha256:04c88cff9dc3766fe621898afcaff8af3d803b4268804c348f6d973d61e862dc", size = 299117, upload-time = "2026-09-23T13:43:29.943Z" },
 ]
