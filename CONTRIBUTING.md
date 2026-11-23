@@ -82,6 +82,14 @@ minor or patch increase. The release job calls it through
 `utils/bump_version_if_tag_exists.sh` when the tag for the current version
 already exists. Do not run it on a feature branch.
 
+**Two merges close together release once.** The release job runs one at a
+time. If another merge reaches `main` while a run is releasing, that run's
+version-bump push is refused. The script then sees `main` has moved on,
+exits with `EXIT_SUPERSEDED` from `utils/exit_codes.sh`, and the run skips
+the rest of the release, still green. The run for the newer merge releases
+both. A run still waiting for its turn when a newer one arrives shows as
+cancelled, for the same reason.
+
 ## Workflow
 
 - Every branch must reference a GitHub issue

@@ -10,13 +10,25 @@ setup() {
   load 'helpers/common'
   common_setup
 
-  # A git stub with knobs: whether the tag exists, what branch HEAD is on, and
-  # whether the push succeeds.
+  source "${REPO_ROOT}/utils/exit_codes.sh"
+
+  # A git stub with knobs: whether the tag exists, what branch HEAD is on,
+  # whether the push succeeds, and what the remote branch holds by then.
   stub git <<'STUB'
 case "$1" in
   rev-parse)
-    [[ -n "${GIT_TAG_EXISTS:-}" ]] && exit 0
-    exit 1 ;;
+    case "$2" in
+      HEAD~1) printf 'started\n' ;;
+      FETCH_HEAD) printf '%s\n' "${GIT_REMOTE_HEAD:-started}" ;;
+      *) [[ -n "${GIT_TAG_EXISTS:-}" ]] && exit 0
+         exit 1 ;;
+    esac ;;
+  fetch)
+    [[ -n "${GIT_FETCH_FAILS:-}" ]] && exit 1
+    exit 0 ;;
+  merge-base)
+    [[ -n "${GIT_REMOTE_REWRITTEN:-}" ]] && exit 1
+    exit 0 ;;
   symbolic-ref)
     if [[ -n "${GIT_BRANCH:-}" ]]; then printf '%s\n' "${GIT_BRANCH}"; exit 0; fi
     exit 1 ;;
@@ -111,7 +123,7 @@ STUB
 
   run "${REPO_ROOT}/utils/bump_version_if_tag_exists.sh" 1.2.3
 
-  [ "$status" -eq 1 ]
+  [ "$status" -eq "${EXIT_FAILURE}" ]
   assert_output_contains "Unable to determine branch name"
   refute_called git "commit"
 }
@@ -123,6 +135,39 @@ STUB
 
   run "${REPO_ROOT}/utils/bump_version_if_tag_exists.sh" 1.2.3
 
-  [ "$status" -eq 1 ]
+  [ "$status" -eq "${EXIT_FAILURE}" ]
+  assert_output_contains "git push failed"
+}
+
+@test "stands down when a newer merge reached the branch first" {
+  # Two merges close together: the later one's run releases both, so this
+  # one must step aside rather than fail the build.
+  export GIT_TAG_EXISTS=1 GIT_BRANCH=main GIT_PUSH_FAILS=1 GIT_REMOTE_HEAD=newer
+
+  run "${REPO_ROOT}/utils/bump_version_if_tag_exists.sh" 1.2.3
+
+  [ "$status" -eq "${EXIT_SUPERSEDED}" ]
+  assert_output_contains "gained a newer commit"
+  assert_called_arg git "FETCH_HEAD"
+  assert_called git "fetch --quiet origin main"
+  assert_called git "merge-base --is-ancestor started FETCH_HEAD"
+}
+
+@test "still fails when the branch was rewritten rather than built on" {
+  export GIT_TAG_EXISTS=1 GIT_BRANCH=main GIT_PUSH_FAILS=1 GIT_REMOTE_HEAD=other \
+    GIT_REMOTE_REWRITTEN=1
+
+  run "${REPO_ROOT}/utils/bump_version_if_tag_exists.sh" 1.2.3
+
+  [ "$status" -eq "${EXIT_FAILURE}" ]
+  assert_output_contains "git push failed"
+}
+
+@test "still fails when it cannot fetch the branch to see why the push failed" {
+  export GIT_TAG_EXISTS=1 GIT_BRANCH=main GIT_PUSH_FAILS=1 GIT_FETCH_FAILS=1
+
+  run "${REPO_ROOT}/utils/bump_version_if_tag_exists.sh" 1.2.3
+
+  [ "$status" -eq "${EXIT_FAILURE}" ]
   assert_output_contains "git push failed"
 }
