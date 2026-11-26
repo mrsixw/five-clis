@@ -1,3 +1,5 @@
+import tomllib
+
 import pytest
 
 from fiveclis.config import (
@@ -5,6 +7,7 @@ from fiveclis.config import (
     _extract_option_blocks,
     _key_present_in_file,
     load_config,
+    misplaced_settings,
     show_config,
     update_config,
     write_default_config,
@@ -146,3 +149,86 @@ def test_update_config_preserves_modes(monkeypatch, tmp_path):
     assert (cfg_file.stat().st_mode & 0o777) == 0o600
     backup = next(tmp_path.glob("config.toml.bak.*"))
     assert (backup.stat().st_mode & 0o777) == 0o600
+
+
+def _update(monkeypatch, tmp_path, content):
+    """Run config update on *content* and return the file it leaves."""
+    from fiveclis import config as cfg_mod
+
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text(content)
+    monkeypatch.setattr(cfg_mod, "get_config_paths", lambda: [cfg_file])
+    assert update_config() is True
+    return cfg_file.read_text()
+
+
+TABLE = '# my server\n[server]\nhost = "example.com"\n'
+
+
+def test_update_config_adds_options_above_the_first_table(monkeypatch, tmp_path):
+    """An option added below [server] would belong to that table."""
+    updated = _update(monkeypatch, tmp_path, f'theme = "dark"\n\n{TABLE}')
+    # The table, with the comment above it, is still last and unchanged.
+    assert updated.endswith(TABLE)
+    assert updated.index("# --- Added by config update") < updated.index("# my")
+    # Uncommented where it was put, an option is top level.
+    enabled = tomllib.loads(updated.replace("# cache = false", "cache = true"))
+    assert enabled["cache"] is True
+    assert misplaced_settings(enabled) == []
+
+
+def test_update_config_without_tables_still_appends(monkeypatch, tmp_path):
+    updated = _update(monkeypatch, tmp_path, 'theme = "dark"')
+    assert updated.startswith('theme = "dark"\n\n# --- Added by config update')
+    assert tomllib.loads(updated) == {"theme": "dark"}
+
+
+def test_new_options_go_above_a_heading_that_introduces_the_tables(
+    monkeypatch, tmp_path
+):
+    heading = "# ----- Servers -----\n# Tables come last.\n\n"
+    updated = _update(monkeypatch, tmp_path, f'theme = "dark"\n\n{heading}{TABLE}')
+    assert updated.endswith(heading + TABLE)
+
+
+def test_a_heading_with_its_own_options_keeps_them_above_the_new_ones(
+    monkeypatch, tmp_path
+):
+    content = '# ----- Display -----\n\n# theme = "default"\n\n' + TABLE
+    updated = _update(monkeypatch, tmp_path, content)
+    assert updated.startswith(
+        '# ----- Display -----\n\n# theme = "default"\n\n# --- Added'
+    )
+
+
+def test_misplaced_settings_names_options_inside_any_table():
+    cfg = {
+        "theme": "dark",
+        "server": {"host": "example.com", "cache": True},
+        "deploy": {"prod": {"theme": "mono"}},
+        "hooks": [{"run": "make"}, {"run": "test", "no-colour": True}],
+        "themes": ["dark", "light"],
+        "lists": {"cache-ttl": ["5m"], "theme": []},
+    }
+    assert misplaced_settings(cfg) == [
+        ("server", "cache"),
+        ("deploy.prod", "theme"),
+        ("hooks", "no-colour"),
+        ("lists", "cache-ttl"),
+        ("lists", "theme"),
+    ]
+
+
+def test_a_second_update_adds_below_the_first_one(monkeypatch, tmp_path):
+    first = "# --- Added by config update (five-clis v1.0.0) on 2026-11-26 ---\n"
+    content = f'theme = "dark"\n\n{first}\n# cache = false\n\n{TABLE}'
+    updated = _update(monkeypatch, tmp_path, content)
+    assert updated.index(first) < updated.index("# cache = false")
+    assert updated.index("# cache = false") < updated.rindex("# --- Added by")
+    assert updated.endswith(TABLE)
+
+
+def test_a_nested_array_row_is_not_mistaken_for_a_table(monkeypatch, tmp_path):
+    content = 'theme = "dark"\nmatrix = [\n  ["a", "b"],\n]\n'
+    updated = _update(monkeypatch, tmp_path, content)
+    assert updated.startswith(content)

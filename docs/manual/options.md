@@ -24,7 +24,10 @@ Write a default config file to `~/.config/fiveclis/config.toml`.
 
 Merge any options missing from your existing config file in from the
 template, writing a timestamped backup first. Useful after upgrading to a
-release that introduces new config keys.
+release that introduces new config keys. If your file has `[tables]`, they go
+in above the first one: TOML reads every key after a table header as part of
+that table, so an option added below one would have no effect. `five-clis` warns
+about any option it finds inside a table.
 
 ### `completions [bash|zsh|fish]`
 
