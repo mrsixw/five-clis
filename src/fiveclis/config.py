@@ -18,6 +18,7 @@ from .xdg import get_config_dir, get_config_paths
 
 __all__ = [
     "load_config",
+    "misplaced_settings",
     "show_config",
     "update_config",
     "write_default_config",
@@ -115,6 +116,104 @@ def load_config(config_path: str | None = None) -> dict:
     return {}
 
 
+#: A TOML table header, such as ``[server]``. Everything after the first one
+#: belongs to a table, so top-level options must be added above it.
+_TABLE_HEADER = re.compile(r"^\s*\[\[?[^\[\],=]+\]\]?\s*(#.*)?$")
+#: A commented-out ``key =`` line; it is an option if the key is a known one.
+_COMMENTED_KEY = re.compile(r"^#\s*([A-Za-z0-9_-]+)\s*=")
+#: A section heading in the template, such as ``# ----- Display -----``.
+_SECTION_HEADING = re.compile(r"^# -{5}")
+#: The line ``config update`` writes above the options it adds.
+_ADDED_SEPARATOR = re.compile(r"^# --- Added by config update \(")
+
+
+def _template_options() -> set[str]:
+    """Every top-level option the template offers."""
+    return {key for key, _block in _extract_option_blocks(_DEFAULT_CONFIG_CONTENT)}
+
+
+def misplaced_settings(cfg: dict) -> list[tuple[str, str]]:
+    """Top-level options that TOML has read as part of a table.
+
+    Returns ``(table, key)`` for each one, the table named as it is written
+    in its header. A key written after a ``[name]`` or ``[[name]]`` header
+    belongs to that table, so an option added below one is ignored.
+    """
+    options = _template_options()
+    found: list[tuple[str, str]] = []
+
+    def walk(table: dict, path: tuple[str, ...]) -> None:
+        for key, value in table.items():
+            # Whatever its value: a list or inline table is ignored there too.
+            if path and key in options:
+                found.append((".".join(path), key))
+            if isinstance(value, dict):
+                walk(value, (*path, key))
+            elif isinstance(value, list):
+                # An array of tables, [[name]]: each entry is a table too.
+                for entry in value:
+                    if isinstance(entry, dict):
+                        walk(entry, (*path, key))
+
+    walk(cfg, ())
+    return found
+
+
+def _commented_option(line: str) -> bool:
+    """Whether *line* is a commented-out top-level option."""
+    match = _COMMENTED_KEY.match(line)
+    if match is None:
+        return False
+    key = match.group(1)
+    return key in _template_options()
+
+
+def _table_comment(line: str) -> bool:
+    """Whether *line* could be a comment about the table below it.
+
+    A commented-out option, or the line an update writes, is not: it belongs
+    with the option block above.
+    """
+    return (
+        line.lstrip().startswith("#")
+        and not _commented_option(line)
+        and not _ADDED_SEPARATOR.match(line)
+    )
+
+
+def _insert_before_tables(content: str, addition: str) -> str:
+    """*content* with *addition* placed above its first table.
+
+    The comment lines straight above that table stay with it. So does the
+    nearest section heading above those, when only comments and blank lines
+    come between: the options go above it, not under a heading that is about
+    the tables. A commented-out option on the way up means the heading
+    belongs to that option's section, so the options stay below it. With no
+    table, *addition* goes at the end.
+    """
+    lines = content.splitlines(keepends=True)
+    first = next((i for i, line in enumerate(lines) if _TABLE_HEADER.match(line)), None)
+    if first is None:
+        if content and not content.endswith("\n"):
+            content += "\n"
+        return f"{content}\n{addition}"
+    at = first
+    while at and _table_comment(lines[at - 1]):
+        at -= 1
+    above = first
+    while above:
+        line = lines[above - 1]
+        if line.strip() and not line.lstrip().startswith("#"):
+            break
+        if _commented_option(line) or _ADDED_SEPARATOR.match(line):
+            break
+        above -= 1
+        if _SECTION_HEADING.match(line):
+            at = above
+            break
+    return "".join(lines[:at]) + f"{addition}\n" + "".join(lines[at:])
+
+
 def write_default_config() -> Path:
     """Write the default config to the XDG config directory.
 
@@ -182,7 +281,7 @@ def _key_present_in_file(key: str, content: str) -> bool:
 
 
 def update_config(config_path: str | None = None) -> bool:
-    """Append any missing options to the existing config file.
+    """Add any missing options to the existing config file, above its tables.
 
     Resolves the config file using the same priority order as load_config().
     Creates a timestamped backup before making any changes. Returns True on
@@ -249,12 +348,10 @@ def update_config(config_path: str | None = None) -> bool:
         f"# --- Added by config update (five-clis v{_version}) on {readable_ts} ---"
     )
 
-    new_content = existing_content
-    if not new_content.endswith("\n"):
-        new_content += "\n"
-    new_content += f"\n{separator}\n"
-    for _key, block in missing:
-        new_content += f"\n{block}\n"
+    # Above the first table: an option added after a [name] header would
+    # belong to that table, and have no effect when uncommented.
+    addition = f"{separator}\n" + "".join(f"\n{block}\n" for _key, block in missing)
+    new_content = _insert_before_tables(existing_content, addition)
 
     try:
         atomic_write_text(existing_path, new_content)

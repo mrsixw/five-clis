@@ -21,7 +21,13 @@ from enum import StrEnum, auto
 import click
 
 from .cache import parse_ttl
-from .config import load_config, show_config, update_config, write_default_config
+from .config import (
+    load_config,
+    misplaced_settings,
+    show_config,
+    update_config,
+    write_default_config,
+)
 from .constants import (
     APP_ITEMS,
     APP_NAME,
@@ -246,9 +252,29 @@ def main(
         cake=cake,
         started_at=started_at,
     )
+    _warn_misplaced_settings(ctx.obj)
 
     if ctx.invoked_subcommand is None:
         ctx.invoke(greet)
+
+
+def _warn_misplaced_settings(settings: Settings) -> None:
+    """Say so when a top-level option has landed inside a ``[table]``.
+
+    TOML puts every key after a table header into that table, so an option
+    written below one is read as part of it, and would otherwise be ignored
+    without a word.
+    """
+    for table, key in misplaced_settings(settings.cfg):
+        message = (
+            f"'{key}' is inside [{table}], so it has no effect. "
+            "Move it above the first table in your config file."
+        )
+        click.echo(
+            settings.theme.apply(f"⚠️  {message}", role="warn"),
+            err=True,
+            color=settings.colour,
+        )
 
 
 def _notify_update(settings: Settings) -> None:

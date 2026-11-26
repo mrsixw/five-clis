@@ -616,3 +616,28 @@ def test_no_colour_env_beats_a_false_config_key(tmp_path, quiet_updates, monkeyp
     monkeypatch.setenv("FIVE_CLIS_NO_COLOUR", "1")
     result = _greet_output(tmp_path, "no-colour = false\n")
     assert "\033[" not in result.output
+
+
+def test_an_option_below_a_table_is_named_not_silently_ignored(tmp_path):
+    # TOML reads a key after [server] as part of that table.
+    cfg = tmp_path / "config.toml"
+    cfg.write_text('[server]\nhost = "example.com"\nno-colour = true\n')
+    result = _invoke("--config", str(cfg), "--no-update-check", "greet")
+    assert result.exit_code == 0, result.output
+    assert "'no-colour' is inside [server], so it has no effect" in result.stderr
+
+
+def test_an_option_above_the_tables_draws_no_warning(tmp_path):
+    cfg = tmp_path / "config.toml"
+    cfg.write_text('no-colour = true\n\n[server]\nhost = "example.com"\n')
+    result = _invoke("--config", str(cfg), "--no-update-check", "greet")
+    assert result.exit_code == 0, result.output
+    assert "has no effect" not in result.stderr
+
+
+def test_config_show_warns_about_an_option_below_a_table(tmp_path):
+    cfg = tmp_path / "config.toml"
+    cfg.write_text('[server]\nhost = "example.com"\nno-colour = true\n')
+    result = _invoke("--config", str(cfg), "--no-update-check", "config", "show")
+    assert result.exit_code == 0, result.output
+    assert "'no-colour' is inside [server]" in result.stderr
